@@ -1,1 +1,1 @@
-"# CC-UFMG" 
+# CC-UFMG
