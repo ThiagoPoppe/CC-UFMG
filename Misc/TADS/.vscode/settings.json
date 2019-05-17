@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "stdlib.h": "c",
+        "lista.h": "c",
+        "fila.h": "c"
+    },
+    "python.pythonPath": "D:\\Anaconda\\envs\\ALC\\python.exe"
+}
