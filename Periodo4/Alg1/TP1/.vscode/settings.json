@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "candidato.h": "c",
+        "universidade.h": "c"
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "math.h": "c",
+        "list_graph.h": "c",
+        "graph.h": "c",
+        "list.h": "c"
+    }
+}
