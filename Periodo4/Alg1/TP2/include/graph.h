@@ -22,9 +22,7 @@ typedef struct graph {
 } Graph;
 
 Graph* create_graph(int V);
-Graph* create_induced_graph_less(Graph* g, int pivot);
-
-void get_edges(Graph* g, Edge* edges);
+void create_induce_graphs(Graph* g, Graph* A, Graph* B, int pivot);
 
 ConnectedComponents* return_connected_components(Graph* g);
 
@@ -35,10 +33,8 @@ void insert_undirected_edge(Graph* g, int v, int u, int weight);
 void DFS(Graph* g, int v, int* visited, int index_component);
 
 void print_graph(Graph* g);
+
 void destroy_graph(Graph* g);
-
 void destroy_connected_components(ConnectedComponents* cc);
-
-int MBST(Graph* g);
 
 #endif

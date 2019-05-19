@@ -72,151 +72,207 @@ int partition(int* a, int start, int end, int pivot) {
     return i;
 }
 
-int partition_3way(int* a, int start, int end, int* lt, int* gt, int pivot) {
-    swap(a, start, pivot);
+int partition_edges(Edge* edges, int start, int end, int pivot) {
+    swap_edges(edges, pivot, end - 1);
+    int i = start;
+    int j = end - 2;
+    while (i <= j) {
+        if (edges[i].weight > edges[end - 1].weight) {
+            swap_edges(edges, i, j);
+            j--;
+        }
+        else
+            i++;
+    }
+
+    swap_edges(edges, i, end - 1);
+    return i;
+}
+
+void partition_3way(int* a, int start, int end, int* lt, int* gt, int pos_pivot) {
+    int pivot = a[pos_pivot];
     int i = start + 1;
+
     *lt = start;
     *gt = end - 1;
 
+    swap(a, start, pos_pivot);
+
     while (i <= *gt) {
-        if (a[i] < a[*lt]) {
+        if (a[i] < pivot) {
             swap(a, i, *lt);
             (*lt)++;
             i++;
         }
-        else if (a[i] > a[*lt]) {
+        else if (a[i] > pivot) {
             swap(a, i, *gt);
             (*gt)--;
         }
         else
             i++;
     }
-
-    return *lt;
 }
 
-void randomized_quicksort(int* a, int start, int end) {
-    if (end - start <= 1)
-        return;
-
-    srand(time(NULL));
-    int p = start + rand() % (end - start);
-    int less, greater;
-    partition_3way(a, start, end, &less, &greater, p);
-
-    randomized_quicksort(a, start, less);
-    randomized_quicksort(a, greater + 1, end);
-}
-
-int quick_select(int* a, int start, int end, int k) {
-    srand(time(NULL));
-    int less, greater;
-
-    int pivot = start + rand() % (end - start);
-    pivot = partition_3way(a, start, end, &less, &greater, pivot);
-
-    int len_L = less - start;
-    int len_M = greater - less + 1;
-    // int len_R = end - (greater + 1);
-
-    if (k < len_L)
-        return quick_select(a, start, less, k);
-    else if (k > len_L)
-        return quick_select(a, greater + 1, end, k - len_L - len_M);
-    else
-        return a[pivot];
-}
-
-int MoM_select(int* a, int size, int k) {
-    int n = size < 5 ? 1 : size / 5;
-    int m = size < 5 ? size : 5;
-    
-    int subV[n][m];
-    int mom[n];
-
-    printf("\n\n\n\n");
-    for (int i = 0; i < size; i++)  
-        printf("%d ", a[i]);
-    printf("\n\n\n\n\n");
-
-    getchar();
-
-    // Divindo o vetor em vetores de 5 elementos, ordenando e pegando a mediana deles
-    for (int i = 0; i < n; i++) {
-        int j = 0;
-        for (int l = 5*i; l < (5*i) + 5 && j < m; l++)
-            subV[i][j++] = a[l];
-
-        insertion_sort(subV[i], m);
-        mom[i] = subV[i][m/2];
-    }
-
-    // Escolhendo nosso pivot para realizar o partition
-    int pivot;
+int median_of_medians(int* a, int n) {
     if (n <= 5) {
-        insertion_sort(mom, n);
-        pivot = mom[n/2];
+        insertion_sort(a, n);
+        return a[n/2];
     }
-    else
-        pivot = MoM_select(mom, n, n/2);
 
-    // Pegando a posição do pivot no vetor original
-    for (int i = 0; i < size; i++) {
+    int group_size = n / 5;
+    int aux[5];
+    int medians[group_size];
+
+    for (int i = 0; i < group_size; i++) {
+        for (int j = 0; j < 5; j++)
+            aux[j] = a[5*i + j];
+
+        insertion_sort(aux, 5);
+        medians[i] = aux[5/2];
+    }
+
+    return median_of_medians(medians, group_size);
+}
+
+int MoM_select(int* a, int n, int k) {
+    int pivot = median_of_medians(a, n);
+
+    int pos_pivot = -1;
+    for (int i = 0; i < n; i++)
         if (a[i] == pivot) {
-            pivot = i;
+            pos_pivot = i;
             break;
         }
-    }
 
-    // Particionando o vetor
-    int lt_pos, gt_pos;
-    pivot = partition_3way(a, 0, size, &lt_pos, &gt_pos, pivot);
 
-    // Computando o tamanho do vetor da esquerda e verificando os casos
-    int len_L = lt_pos;
-    int len_M = gt_pos - lt_pos + 1;
-    int len_R = size - (len_L + len_M);
+    int lt, gt;
+    partition_3way(a, 0, n, &lt, &gt, pos_pivot);
 
-    if (k < len_L) {
-        int left[len_L];
-        for (int i = 0; i < len_L; i++)
-            left[i] = a[i];
+    int left[lt];
+    for (int i = 0; i < lt; i++)
+        left[i] = a[i];
+    
+    int right[n - gt];
+    int i = 0;
+    for (int j = gt + 1; j < n; j++)
+        right[i++] = a[j];
 
-        return MoM_select(left, len_L, k);
-    }
-    else if (k > len_L) {
-        int right[len_R];
-        int j = 0;
-        for (int i = len_L + len_M; i < size; i++)
-            right[j++] = a[i];
-        
-        return MoM_select(right, len_R, k - len_L - len_M);
-    }   
+    if (k < lt)
+        return MoM_select(left, lt, k);
+    else if (k > gt)
+        return MoM_select(right, n - (gt + 1), k - gt - 1);
     else
-        return a[pivot];
+        return pivot;
 }
 
-int partition_3way_edges(Edge* edges, int start, int end, int* lt, int* gt, int pivot) {
-    swap_edges(edges, start, pivot);
+// REFAZER DEPOIS
+// void randomized_quicksort(int* a, int start, int end) {
+//     if (end - start <= 1)
+//         return;
+
+//     srand(time(NULL));
+//     int p = start + rand() % (end - start);
+//     int less, greater;
+//     partition_3way(a, start, end, &less, &greater, p);
+
+//     randomized_quicksort(a, start, less);
+//     randomized_quicksort(a, greater + 1, end);
+// }
+
+// REFAZER DEPOIS
+// int quick_select(int* a, int start, int end, int k) {
+//     srand(time(NULL));
+//     int less, greater;
+
+//     int pivot = start + rand() % (end - start);
+//     partition_3way(a, start, end, &less, &greater, pivot);
+
+//     int len_L = less - start;
+//     int len_M = greater - less + 1;
+//     // int len_R = end - (greater + 1);
+
+//     if (k < len_L)
+//         return quick_select(a, start, less, k);
+//     else if (k > len_L)
+//         return quick_select(a, greater + 1, end, k - len_L - len_M);
+//     else
+//         return a[pivot];
+// }
+
+void partition_3way_edge(Edge* edges, int start, int end, int* lt, int* gt, int pos_pivot) {
+    int pivot = edges[pos_pivot].weight;
     int i = start + 1;
+
     *lt = start;
     *gt = end - 1;
 
+    swap_edges(edges, start, pos_pivot);
+
     while (i <= *gt) {
-        if (edges[i].weight < edges[*lt].weight) {
+        if (edges[i].weight < pivot) {
             swap_edges(edges, i, *lt);
             (*lt)++;
             i++;
         }
-        else if (edges[i].weight > edges[*lt].weight) {
+        else if (edges[i].weight > pivot) {
             swap_edges(edges, i, *gt);
             (*gt)--;
         }
         else
             i++;
     }
+}
 
-    return *lt;
+Edge median_of_medians_edge(Edge* edges, int n) {
+    if (n <= 5) {
+        insertion_sort_edges(edges, n);
+        return edges[n/2];
+    }
+
+    int group_size = n / 5;
+    Edge aux[5];
+    Edge medians[group_size];
+
+    for (int i = 0; i < group_size; i++) {
+        for (int j = 0; j < 5; j++)
+            aux[j] = edges[5*i + j];
+
+        insertion_sort_edges(aux, 5);
+        medians[i] = aux[5/2];
+    }
+
+    return median_of_medians_edge(medians, group_size);
+}
+
+int MoM_select_edge(Edge* edges, int n, int k) {
+    Edge pivot = median_of_medians_edge(edges, n);
+
+    int pos_pivot = -1;
+    for (int i = 0; i < n; i++)
+        if (edges[i].v == pivot.v && edges[i].u == pivot.u && edges[i].weight == pivot.weight) {
+            pos_pivot = i;
+            break;
+        }
+
+
+    int lt, gt;
+    partition_3way_edge(edges, 0, n, &lt, &gt, pos_pivot);
+
+    Edge left[lt];
+    for (int i = 0; i < lt; i++)
+        left[i] = edges[i];
+    
+    Edge right[n - gt];
+    int i = 0;
+    for (int j = gt + 1; j < n; j++)
+        right[i++] = edges[j];
+
+    if (k < lt)
+        return MoM_select_edge(left, lt, k);
+    else if (k > gt)
+        return MoM_select_edge(right, n - (gt + 1), k - gt - 1);
+    else
+        return pivot.weight;
 }
 
 void print_array(Edge* a, int n) {
@@ -225,60 +281,8 @@ void print_array(Edge* a, int n) {
     printf("\n");
 }
 
-int MoM_select_edges(Edge* edges, int size, int k) {
-    if (size < 5) {
-        insertion_sort_edges(edges, size);
-        return edges[size/2].weight;
-    }
-
-    int n = size / 5;
-    Edge subV[5];
-    Edge mom[n];
-
-    // Divindo o vetor em vetores de 5 elementos, ordenando e pegando a mediana deles
-    for (int i = 0; i < n; i++) {
-            for (int j = 0; j < 5; j++)
-                subV[j].weight = edges[5*i + j].weight;
-            
-        insertion_sort_edges(subV, 5);
-        mom[i].weight = subV[5/2].weight;
-    }
-
-    // Escolhendo nosso pivot para realizar o partition
-    int pivot = MoM_select_edges(mom, n, k);
-
-    // Pegando a posição do pivot no vetor original
-    for (int i = 0; i < size; i++) {
-        if (edges[i].weight == pivot) {
-            pivot = i;
-            break;
-        }
-    }
-
-    // Particionando o vetor
-    int lt_pos, gt_pos;
-    pivot = partition_3way_edges(edges, 0, size, &lt_pos, &gt_pos, pivot);
-
-    // Computando o tamanho do vetor da esquerda e verificando os casos
-    int len_L = lt_pos;
-    int len_M = gt_pos - lt_pos + 1;
-    int len_R = size - (len_L + len_M);
-
-    if (k < len_L) {
-        Edge left[len_L];
-        for (int i = 0; i < len_L; i++)
-            left[i] = edges[i];
-
-        return MoM_select_edges(left, len_L, k);
-    }
-    else if (k > len_L) {
-        Edge right[len_R];
-        int j = 0;
-        for (int i = len_L + len_M; i < size; i++)
-            right[j++] = edges[i];
-        
-        return MoM_select_edges(right, len_R, k - len_L - len_M);
-    }   
-    else
-        return edges[pivot].weight;
+void print_edges(Edge* edges, int size) {
+    for (int i = 0; i < size; i++)
+        printf("%d ", edges[i].weight);
+    printf("\n");
 }

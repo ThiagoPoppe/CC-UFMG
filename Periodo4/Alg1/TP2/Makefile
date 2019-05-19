@@ -21,8 +21,3 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 
 compile: $(OBJECTS)
 	$(CC) $(CFLAGS) $(INC) $(MAIN) $^ -o $(TARGET) -lm
-	$(RM) -r $(OBJDIR)
-
-run_tst_1:
-	./$(TARGET) arquivos/dataset_tp2/cidades1.txt
-	

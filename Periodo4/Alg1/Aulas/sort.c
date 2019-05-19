@@ -30,17 +30,17 @@ void insertion_sort(int* a, int n) {
                 swap(a, j, j-1); 
 }
 
-void quick_sort(int* a, int start, int end) {
-    if (end - start <= 1)
-        return;
+// void quick_sort(int* a, int start, int end) {
+//     if (end - start <= 1)
+//         return;
 
-    int p = start + rand() % (end - start);
-    int less, greater;
-    partition_3way(a, start, end, &less, &greater, p);
+//     int p = start + rand() % (end - start);
+//     int less, greater;
+//     partition_3way(a, start, end, &less, &greater, p);
 
-    randomized_quicksort(a, start, less);
-    randomized_quicksort(a, greater + 1, end);
-}
+//     randomized_quicksort(a, start, less);
+//     randomized_quicksort(a, greater + 1, end);
+// }
 
 int select_min_pos(int* a, int start, int end) {
     int min_pos = start;

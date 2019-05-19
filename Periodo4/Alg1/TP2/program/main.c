@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "calculoDist.h"
-#include "vetor.h"
-#include "grafo.h"
+#include "graph.h"
+#include "camerini.h"
+#include "distance.h"
 
 int main(int argc, const char **argv) {
     // Abrindo o arquivo em modo de leitura
@@ -14,33 +14,33 @@ int main(int argc, const char **argv) {
     }
 
     // Lendo o número de cidades
-    int n_cidades;
-    fscanf(f, "%d", &n_cidades);
+    int n_tele;
+    fscanf(f, "%d", &n_tele);
 
     // Lendo a latitude e longitude
-    double lat[n_cidades], lon[n_cidades];
-    for (int i = 0; i < n_cidades; i++)
+    double lat[n_tele], lon[n_tele];
+    for (int i = 0; i < n_tele; i++)
         fscanf(f, "%lf %lf", &lat[i], &lon[i]);
 
     // Fechando o arquivo
     fclose(f);
 
-    // Criando o grafo completo e computando as distâncias entre cada satélite
-    GrafoK* satelites = criaGrafoK(n_cidades);
-    Vetor* dist = criaVetor(satelites->num_e);
-    int k = 0;
-    for (int i = 0; i < n_cidades; i++) {
-        for (int j = i+1; j < n_cidades; j++) {
-            dist->array[k] = distanceEarthKm(lat[i], lon[i], lat[j], lon[j]);
-            insereAresta(satelites, i, j, dist->array[k++]);
+    // Criando o grafo completo e computando as distâncias entre cada telescópio
+    Graph* telescopes = create_graph(n_tele);
+
+    // Inserindo nossas arestas no grafo
+    for (int i = 0; i < telescopes->num_vertices; i++) {
+        for (int j = i+1; j < telescopes->num_vertices; j++) {
+            int dist = distanceEarthKm(lat[i], lon[i], lat[j], lon[j]);
+            insert_undirected_edge(telescopes, i, j, dist);
         }
     }
+    
+    // Imprimindo a aresta "bottleneck" do nosso grafo
+    printf("%d\n", get_bottleneck_edge(telescopes));
 
-    // Imprimindo o grafo completo e desalocando o mesmo
-    printGrafoK(satelites);
-    destroyGrafoK(satelites);
-
-    destroyVetor(dist);
+    // Desalocando o grafo de telescópios
+    destroy_graph(telescopes);
 
     return 0;
 }
