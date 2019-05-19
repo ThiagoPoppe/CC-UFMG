@@ -75,3 +75,16 @@ int* merge_sort(int* a, int start, int end) {
 
     return result;
 }
+
+void insertion_sort_edges(Edge* edges, int n) {
+    for (int i = 0; i < n; i++)
+        for (int j = i; j > 0; j--)
+            if (edges[j].weight < edges[j-1].weight)
+                swap_edges(edges, j, j-1); 
+}
+
+void swap_edges(Edge* edges, int i, int j) {
+    Edge aux = edges[i];
+    edges[i] = edges[j];
+    edges[j] = aux;
+}

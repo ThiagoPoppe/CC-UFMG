@@ -32,9 +32,31 @@ Node* create_node(int id, int weight) {
     return n;
 }
 
+// Função que retorna um nó
+Node* get_node(List* l, int id) {
+    Node* aux = l->head;
+    while (aux != NULL && aux->id != id)
+        aux = aux->next;
+
+    return aux;
+}
+
+// Função que verifica se um elemento está na lista
+int in_list(List* l, int id) {
+    Node* aux = l->head;
+
+    while (aux != NULL) {
+        if (aux->id == id)
+            return 1;
+        aux = aux->next;
+    }
+
+    return 0;
+}
+
 // Função que insere um elemento no fim da Lista
 void insert_end(List* l, int id, int weight) {
-    Node *n = criaNode(id, weight);
+    Node *n = create_node(id, weight);
 
     if (l->head == NULL) {
         l->head = n;
@@ -64,7 +86,7 @@ void print_list(List* l) {
     Node* current = l->head;
     
     while (current != NULL) {
-        printf("%d ", current->weight);
+        printf("(id: %d, weight: %d) ", current->id, current->weight);
         current = current->next;
     }
     printf("\n");

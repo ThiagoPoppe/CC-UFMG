@@ -16,6 +16,10 @@ typedef struct list {
 List* create_list();
 Node* create_node(int id, int weight);
 
+Node* get_node(List* l, int id);
+
+int in_list(List* l, int id);
+
 void insert_end(List* l, int id, int weight);
 void remove_begin(List* l);
 

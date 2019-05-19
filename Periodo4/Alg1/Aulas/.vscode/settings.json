@@ -9,6 +9,7 @@
         "unordered_map": "c",
         "vector": "c",
         "initializer_list": "c",
-        "lista.h": "c"
+        "lista.h": "c",
+        "graph.h": "c"
     }
 }

@@ -127,12 +127,19 @@ int quick_select(int* a, int start, int end, int k) {
         return a[pivot];
 }
 
-int MoM_select(int* a, int size, int k) {    
+int MoM_select(int* a, int size, int k) {
     int n = size < 5 ? 1 : size / 5;
     int m = size < 5 ? size : 5;
     
     int subV[n][m];
     int mom[n];
+
+    printf("\n\n\n\n");
+    for (int i = 0; i < size; i++)  
+        printf("%d ", a[i]);
+    printf("\n\n\n\n\n");
+
+    getchar();
 
     // Divindo o vetor em vetores de 5 elementos, ordenando e pegando a mediana deles
     for (int i = 0; i < n; i++) {
@@ -187,4 +194,91 @@ int MoM_select(int* a, int size, int k) {
     }   
     else
         return a[pivot];
+}
+
+int partition_3way_edges(Edge* edges, int start, int end, int* lt, int* gt, int pivot) {
+    swap_edges(edges, start, pivot);
+    int i = start + 1;
+    *lt = start;
+    *gt = end - 1;
+
+    while (i <= *gt) {
+        if (edges[i].weight < edges[*lt].weight) {
+            swap_edges(edges, i, *lt);
+            (*lt)++;
+            i++;
+        }
+        else if (edges[i].weight > edges[*lt].weight) {
+            swap_edges(edges, i, *gt);
+            (*gt)--;
+        }
+        else
+            i++;
+    }
+
+    return *lt;
+}
+
+void print_array(Edge* a, int n) {
+    for (int i = 0; i < n; i++)
+        printf("%d ", a[i].weight);
+    printf("\n");
+}
+
+int MoM_select_edges(Edge* edges, int size, int k) {
+    if (size < 5) {
+        insertion_sort_edges(edges, size);
+        return edges[size/2].weight;
+    }
+
+    int n = size / 5;
+    Edge subV[5];
+    Edge mom[n];
+
+    // Divindo o vetor em vetores de 5 elementos, ordenando e pegando a mediana deles
+    for (int i = 0; i < n; i++) {
+            for (int j = 0; j < 5; j++)
+                subV[j].weight = edges[5*i + j].weight;
+            
+        insertion_sort_edges(subV, 5);
+        mom[i].weight = subV[5/2].weight;
+    }
+
+    // Escolhendo nosso pivot para realizar o partition
+    int pivot = MoM_select_edges(mom, n, k);
+
+    // Pegando a posição do pivot no vetor original
+    for (int i = 0; i < size; i++) {
+        if (edges[i].weight == pivot) {
+            pivot = i;
+            break;
+        }
+    }
+
+    // Particionando o vetor
+    int lt_pos, gt_pos;
+    pivot = partition_3way_edges(edges, 0, size, &lt_pos, &gt_pos, pivot);
+
+    // Computando o tamanho do vetor da esquerda e verificando os casos
+    int len_L = lt_pos;
+    int len_M = gt_pos - lt_pos + 1;
+    int len_R = size - (len_L + len_M);
+
+    if (k < len_L) {
+        Edge left[len_L];
+        for (int i = 0; i < len_L; i++)
+            left[i] = edges[i];
+
+        return MoM_select_edges(left, len_L, k);
+    }
+    else if (k > len_L) {
+        Edge right[len_R];
+        int j = 0;
+        for (int i = len_L + len_M; i < size; i++)
+            right[j++] = edges[i];
+        
+        return MoM_select_edges(right, len_R, k - len_L - len_M);
+    }   
+    else
+        return edges[pivot].weight;
 }
