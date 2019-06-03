@@ -17,44 +17,44 @@
 
 ## 2) Classes
 ### 2.1) Ray
-- A classe Ray será responsável por modelar os nossos raios disparados. Nela, temos como parâmetros o ponto de origem do raio, bem como a sua direção. Implementamos também uma função que dado um parâmetro $t$ retorna um ponto pertencente ao raio. Usaremos essa função para sabermos o ponto de interseção com os objetos em nossa cena.
+- A classe Ray será responsável por modelar os nossos raios disparados. Nela, temos como parâmetros o ponto de origem do raio, bem como a sua direção. Implementamos também uma função que dado um parâmetro _t_ retorna um ponto pertencente ao raio. Usaremos essa função para sabermos o ponto de interseção com os objetos em nossa cena.
 
 ### 2.2) Camera
 - A classe Camera será responsável por modelar a nossa câmera na cena. Nela, temos como parâmetros o ponto de origem da mesma, bem como para onde estaremos olhando, orientação vertical, field of view (também conhecido como _fov_), o "aspect ratio" (em outras palavras, a "proporção da tela", e.g 16:9), a abertura da lente da câmera e a distância focal da mesma. Esses dois últimos parâmetros são os responsáveis pelo efeito de Depth of Field presente em várias câmeras reais.
 <br><br>
-- Na classe, temos também uma função que dispara os raios para realizar o processo de Ray Tracing, com nome de $shoot\_ray$, que recebe como parâmetros as coordenadas $u$ e $v$ (no caso do programa, $s$ e $t$) que indicam onde iremos disparar o raio.
+- Na classe, temos também uma função que dispara os raios para realizar o processo de Ray Tracing, com nome de shoot\_ray, que recebe como parâmetros as coordenadas _u_ e _v_ (no caso do programa, _s_ e _t_) que indicam onde iremos disparar o raio.
 <br><br>
 - Para finalizar, temos uma função auxiliar que escolhe aleatóriamente um ponto em um círculo (ou disco) unitário, a qual usaremos para realizar o efeito de Depth of Field. O livro implementa tal função utilizando o método de rejeição, que consiste em basicamente escolher um ponto aleatório e verificar se o mesmo pertence ao círculo ou não. Optei por modificar essa função para retornar valores de raio e ângulo que obtemos com o método de inversão da CDF (cumulative distribution function, ou no português: função distribuição acumulada), tornando assim essa parte um pouco mais rápida.
 
 ### 2.3) Sphere
 - A classe Sphere será responsável por modelar as esferas presentes na cena. Nela, temos como parâmetros a posição do centro, o raio e o tipo de material da mesma, que pode ser lambertiano (difuso), metal (especular) ou vidro (dielétrico).
 <br><br>
-- Na classe, temos também uma função $hit$ que indica se um raio atingiu uma esfera e quais são os pontos. Para realizar esse cálculo, basta resolvermos uma equação de segundo grau e computar o parâmetro $t$ dado essa equação.
+- Na classe, temos também uma função _hit_ que indica se um raio atingiu uma esfera e quais são os pontos. Para realizar esse cálculo, basta resolvermos uma equação de segundo grau e computar o parâmetro _t_ dado essa equação.
 <br><br>
 - Para finalizar, temos uma função auxiliar que escolhe aleatóriamente um ponto em uma esfera unitária, a qual usaremos para indicar a direção do raio de saída. O livro implementa tal função também utilizando o método de rejeição. Optei por modificar essa função tal qual foi explicado na parte da classe Camera.
 
 ### 2.4) HitableList
 - A classe HitableList será responsável por guardar uma lista de instâncias dos objetos da cena.
 <br><br>
-- Na classe, temos também a função $hit$ que indica se um raio atingiu um objeto e quais são os pontos.
+- Na classe, temos também a função _hit_ que indica se um raio atingiu um objeto e quais são os pontos.
 
 ### 2.5) Lambertian
 - A classe Lambertian será responsável por modelar materiais lambertianos, ou difusos. Nela, temos como parâmetro a cor do objeto no formato RGB (vermelho, verde e azul, respectivamente).
 <br><br>
-- Na classe, temos também uma função $scatter$ que modela como o raio se comportará dado esse material. No caso de um objeto lambertiano, temos que o raio disperso terá origem no ponto de interseção e direção igual a soma do ponto e normal no local de interseção mais um ponto aleatório em uma esfera unitária. Já a atenuação será igual ao albedo do objeto, i.e a cor do mesmo. Para esse tipo de material, temos que os raios sempre serão dispersados.
+- Na classe, temos também uma função _scatter_ que modela como o raio se comportará dado esse material. No caso de um objeto lambertiano, temos que o raio disperso terá origem no ponto de interseção e direção igual a soma do ponto e normal no local de interseção mais um ponto aleatório em uma esfera unitária. Já a atenuação será igual ao albedo do objeto, i.e a cor do mesmo. Para esse tipo de material, temos que os raios sempre serão dispersados.
 
 ### 2.6) Metal
-- A classe Metal será responsável por modelar materiais metálicos, ou especulares. Nela, temos como parâmetros a cor do objeto no formato RGB e a porcentagem de $fuzz$, ou seja, o quão "embaçado" será a reflexão.
+- A classe Metal será responsável por modelar materiais metálicos, ou especulares. Nela, temos como parâmetros a cor do objeto no formato RGB e a porcentagem de _fuzz_, ou seja, o quão "embaçado" será a reflexão.
 <br><br>
-- Na classe, temos também a função $scatter$ que modela como o raio se comportará dado esse material. No caso de um objeto metálico, temos que computar o raio refletido. Para tal, usamos a fórmula $v - 2 * dot(v, n) * n$, onde $v$ representa o raio de entrada e $n$ a normal da superfície. Sendo assim, temos que o raio disperso terá origem no ponto de interseção e direção igual ao raio refletido mais um ponto aleatório em uma esfera unitária vezes a quantidade de $fuzz$. Isso faz com que tenhamos uma reflexão "embaçada" a depender da quantidade de $fuzz$ que colocamos para a superfície. Já a atenuação será igual ao albedo do objeto. Para dizer se um raio será dispersado ou não, temos que isso será igual a expressão booleana $dot(dir, normal) > 0$, onde $dir$ representa a direção do raio dispersado.
+- Na classe, temos também a função _scatter_ que modela como o raio se comportará dado esse material. No caso de um objeto metálico, temos que computar o raio refletido. Para tal, usamos a fórmula _v - 2 * dot(v, n) * n_, onde _v_ representa o raio de entrada e _n_ a normal da superfície. Sendo assim, temos que o raio disperso terá origem no ponto de interseção e direção igual ao raio refletido mais um ponto aleatório em uma esfera unitária vezes a quantidade de _fuzz_. Isso faz com que tenhamos uma reflexão "embaçada" a depender da quantidade de _fuzz_ que colocamos para a superfície. Já a atenuação será igual ao albedo do objeto. Para dizer se um raio será dispersado ou não, temos que isso será igual a expressão booleana _dot(dir, normal) > 0_, onde _dir_ representa a direção do raio dispersado.
 
 ### 2.7) Dielectric
 - A classe Dielectric será responsável por modelar materiais dielétricos, a exemplo do vidro. Nela, temos como parâmetros o índice de refração do objeto.
 <br><br>
-- Na classe, temos também a função $scatter$ que modela como o raio se comportará dado esse material. No caso de um objeto dielétrico, isso já é um pouco mais complicado. Resumindo, utilizamos a Lei de Snell, que estabelece uma relação entre o ângulo de incidência de um raio e a refração do mesmo, para modelar a refração no nosso objeto. Aliado a isso, também utilizamos a aproximação de Schlick, que é amplamente usada em computação gráfica para aproximar a contribuição do fator de Fresnel (reflexão e transmição de luz) na reflexão especular de luz de uma superfície não condutora, em outras palavras, dielétrica.
+- Na classe, temos também a função _scatter_ que modela como o raio se comportará dado esse material. No caso de um objeto dielétrico, isso já é um pouco mais complicado. Resumindo, utilizamos a Lei de Snell, que estabelece uma relação entre o ângulo de incidência de um raio e a refração do mesmo, para modelar a refração no nosso objeto. Aliado a isso, também utilizamos a aproximação de Schlick, que é amplamente usada em computação gráfica para aproximar a contribuição do fator de Fresnel (reflexão e transmição de luz) na reflexão especular de luz de uma superfície não condutora, em outras palavras, dielétrica.
 
 # 3) Resultados obtidos
-- A imagem final gerada com nome final_scene.png possui tamanho 640x404 com 200 esferas pequenas espalhadas pela cena, 1 esfera de cada material (difuso, especular e dielétrico) e 1 esfera grande que representa o chão. Como dito na introdução, optei por gerar menos esferas apenas para diminuir o tempo necessário na espera da execução do código, visto que implementamos em Python3 que por si só já é mais lento que C++, que foi a linguagem que o livro utilizou.
+- A imagem final gerada com nome final_scene.png possui tamanho 320x240 com 200 esferas pequenas espalhadas pela cena, 1 esfera de cada material (difuso, especular e dielétrico) e 1 esfera grande que representa o chão. Como dito na introdução, optei por gerar menos esferas apenas para diminuir o tempo necessário na espera da execução do código, visto que implementamos em Python3 que por si só já é mais lento que C++, que foi a linguagem que o livro utilizou.
 <br><br>
-- Além da imagem final, gerei imagens para cada novo passo que dei no livro (todas com tamanho 200x100) e também a cena final sobre um outro ângulo de visão, modificando a posição da câmera. Essa cena possui o mesmo número de esferas que a anterior, porém com tamanho 200x100.
+- Além da imagem final, gerei imagens para cada novo passo que dei no livro (todas com tamanho 200x100) e também a cena final sobre um outro ângulo de visão, modificando a posição da câmera. Essa cena, por sua vez, possui 200 esferas e tamanho 320x240.
 <br><br>
