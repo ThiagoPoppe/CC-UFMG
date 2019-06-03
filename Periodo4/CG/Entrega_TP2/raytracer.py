@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 
+from time import time
 from numpy import array as Vec3
 from numpy.random import uniform as rand
 
@@ -249,6 +250,18 @@ class Sphere(Hitable):
     def material(self):
         return self.__material
 
+    # Método estático para 
+    @staticmethod
+    def random_point():
+        r = np.sqrt(rand())
+        theta = 2 * np.pi * rand()
+
+        x = r * np.cos(theta)
+        y = r * np.sin(theta)
+        z = rand()
+
+        return Vec3([x, y, z])
+
     # Método que define a função hit
     def hit(self, ray, t_min, t_max):
         # Definindo o vetor que parte do ponto de origem do raio até o centro da esfera
@@ -282,18 +295,7 @@ class Sphere(Hitable):
 
         # Caso o discriminante seja menor que 0, retornamos falso e coisas inválidas
         return [False, -1, -1, -1]
-
-    # Método static para retornar um ponto aleatório em uma esfera unitária
-    @staticmethod
-    def random_point():
-        r = np.sqrt(rand())
-        theta = 2 * np.pi * rand()
-
-        x = r * np.cos(theta)
-        y = r * np.sin(theta)
-        z = rand()
-
-        return Vec3([x, y, z])
+    
 
 class HitableList(Hitable):
     """
@@ -370,7 +372,6 @@ class HitableList(Hitable):
         return objects
 
 
-
 # Definindo a main do programa
 def main():
     # Obtendo o nome do arquivo via linha de comando
@@ -394,15 +395,15 @@ def main():
     print('255', file=f)
 
     # Definindo nossa câmera
-    cam_origin = Vec3([13.5, 1.5, 4.0])
+    cam_origin = Vec3([13.5, 1.5, 3])
     cam_look_at = Vec3([0.0, 0.5, -1])
     focus_dist = 10
-    aperture = 0.16
+    aperture = 0.1
     cam = Camera(cam_origin, cam_look_at, Vec3([0, 1, 0]), 20, width / height, aperture, focus_dist)
 
     # Definindo os objetos da nossa cena
     try:
-        objects = HitableList.random_scene(sys.argv[4])
+        objects = HitableList.random_scene(int(sys.argv[4]))
     except:
         objects = HitableList.random_scene(200)
 
@@ -438,7 +439,6 @@ def main():
 
 # Chamando a nossa main
 if __name__ == '__main__':
-    import time
-    start = time.time()
+    start = time()
     main()
-    print('----- {} seconds -----'.format(int(time.time() - start)))
+    print('----- Took {} seconds to create .ppm file -----'.format(int(time() - start)))
