@@ -2,8 +2,11 @@ import sys
 import numpy as np
 
 from time import time
-from numpy import array as Vec3
 from numpy.random import uniform as rand
+
+# ------------- VARIÁVEIS GLOBAIS ------------- #
+gravity = np.array([0.0, -0.005, 0.0])
+
 
 # ------------- FUNÇÕES AUXILIARES ------------- #
 
@@ -46,19 +49,19 @@ def raytrace(ray_in, world, depth):
         if depth < 50 and scattered:
             return attenuation * raytrace(ray_out, world, depth + 1)
         else:
-            return Vec3([.0, .0, .0])
+            return np.array([.0, .0, .0])
 
     else:
         unit_dir = normalize(ray_in.dir())
         t = 0.5 * (unit_dir[1] + 1)
-        return (1 - t) * Vec3([1.0, 1.0, 1.0]) + t * Vec3([0.5, 0.7, 1.0])
+        return (1 - t) * np.array([1.0, 1.0, 1.0]) + t * np.array([0.5, 0.7, 1.0])
 
 # Função que retorna um ponto aleatório em um disco (círculo)
 def random_point_in_disk():
     r = np.sqrt(rand())
     theta = 2 * np.pi * rand()
 
-    return Vec3([r * np.cos(theta), r * np.sin(theta), .0])
+    return np.array([r * np.cos(theta), r * np.sin(theta), .0])
 
 # ------------- CLASSES ------------- #
 
@@ -194,7 +197,7 @@ class Dielectric(Material):
     # Método que define a função scatter
     def scatter(self, ray, point, normal):
         reflected = reflect(ray.dir(), normal)
-        attenuation = Vec3([1.0, 1.0, 1.0])
+        attenuation = np.array([1.0, 1.0, 1.0])
         
         outward_normal = normal
         factor = 1 / self.ref_index()
@@ -233,10 +236,14 @@ class Sphere(Hitable):
     """
 
     # Método para inicializar uma classe do tipo Sphere
-    def __init__(self, center, radius, material):
+    def __init__(self, center, radius, bounce, material):
         self.__center = center
         self.__radius = radius
         self.__material = material
+
+        self.__bounce = bounce
+        self.__init_height = center[1]
+        self.__velocity = np.array([0.0, 0.05, 0.0])
 
     # Método para retornar a posição do centro da esfera
     def center(self):
@@ -246,9 +253,25 @@ class Sphere(Hitable):
     def radius(self):
         return self.__radius
 
+    # Método para retornar a velocidade da esfera
+    def vel(self):
+        return self.__velocity
+
     # Método para retornar o material da esfera
     def material(self):
         return self.__material
+
+    # Método que atualiza a posição da esfera
+    def update(self):
+        if self.__bounce == True:
+            self.__center += self.__velocity
+            self.__velocity += gravity
+
+        if self.__center[1] < self.__init_height:
+            self.__velocity = np.array([0.0, 0.05, 0.0])
+
+        # if (self.__material.albedo() == np.array([0.8, 0.3, 0.3])).all():
+        #     print(self.__center[1])
 
     # Método estático para 
     @staticmethod
@@ -260,7 +283,7 @@ class Sphere(Hitable):
         y = r * np.sin(theta)
         z = rand()
 
-        return Vec3([x, y, z])
+        return np.array([x, y, z])
 
     # Método que define a função hit
     def hit(self, ray, t_min, t_max):
@@ -269,14 +292,14 @@ class Sphere(Hitable):
 
         # Definindo os coeficientes do polinômio para vermos os pontos de interseção
         a = np.dot(ray.dir(), ray.dir())
-        b = 2.0 * np.dot(oc, ray.dir())
+        b = np.dot(oc, ray.dir())
         c = np.dot(oc, oc) - self.radius()**2
 
         # Computando o discriminante
-        delta = b**2 - 4 * a * c
+        delta = b**2 - a * c
         if delta > 0:
             # Computamos a menor raiz e vemos se ela está no intervalo
-            t = (-1*b - np.sqrt(delta)) / (2*a)
+            t = (-1*b - np.sqrt(delta)) / a
             if t_min < t and t < t_max:
                 # Computamos o ponto e a normal dado esse t
                 point = ray.point(t)
@@ -285,7 +308,7 @@ class Sphere(Hitable):
                 return [True, t, point, normal]
 
             # Caso contrário, computamos a maior raiz e vemos se ela está no intervalo
-            t = (-1*b + np.sqrt(delta)) / (2*a)
+            t = (-1*b + np.sqrt(delta)) / a
             if t_min < t and t < t_max:
                 # Computamos o ponto e a normal dado esse t
                 point = ray.point(t)
@@ -333,41 +356,46 @@ class HitableList(Hitable):
         # Retornamos hit_status
         return hit_status
 
+    # Método que atualiza os objetos da lista
+    def update(self):
+        for obj in self.objects():
+            obj.update()
+
     # Método static para gerar uma cena aleatória
     @staticmethod
     def random_scene(n_obj):
         objects = []
 
         # Inserindo uma esfera que será o chão da nossa cena
-        objects.append(Sphere(Vec3([0, -1000, 0]), 1000, Lambertian([0.5, 0.5, 0.5])))
+        objects.append(Sphere(np.array([0, -1000, 0]), 1000, False, Lambertian([0.5, 0.5, 0.5])))
 
         # Inserindo objetos
         for _ in range(n_obj):
             material = rand()
-            center = Vec3([rand(-9, 9) + 0.9 * rand(), 0.2, rand(-9, 9) + 0.9 * rand()])
-            if np.linalg.norm(center - Vec3([4, 0.2, 0])) > 0.9:
+            center = np.array([rand(-9, 9) + 0.9 * rand(), 0.2, rand(-9, 9) + 0.9 * rand()])
+            if np.linalg.norm(center - np.array([4, 0.2, 0])) > 0.9:
                 # Escolhendo um material Lambertiano
                 if material < 0.8:
-                    objects.append(Sphere(center, 0.2, Lambertian([rand(), rand(), rand()])))
+                    objects.append(Sphere(center, 0.2, True, Lambertian([rand(), rand(), rand()])))
                 
                 # Escolhendo um material metálico
                 elif material < 0.95:
-                    albedo = Vec3([0.5 * (1 + rand()), 0.5 * (1 + rand()), 0.5 * (1 + rand())])
+                    albedo = np.array([0.5 * (1 + rand()), 0.5 * (1 + rand()), 0.5 * (1 + rand())])
                     fuzz = 0.5 * rand()
-                    objects.append(Sphere(center, 0.2, Metal(albedo, fuzz)))
+                    objects.append(Sphere(center, 0.2, False, Metal(albedo, fuzz)))
 
                 # Escolhendo um material dielétrico, mais especificamente vidro
                 else:
-                    objects.append(Sphere(center, 0.2, Dielectric(1.5)))
+                    objects.append(Sphere(center, 0.2, False, Dielectric(1.5)))
 
         # Inserindo uma esfera grande do tipo Dielectric
-        objects.append(Sphere(Vec3([0, 1, 0]), 1, Dielectric(1.5)))
+        objects.append(Sphere(np.array([0.0, 1.0, 0.0]), 1, False, Dielectric(1.5)))
 
         # Inserindo uma esfera grande do tipo Lambertian
-        objects.append(Sphere(Vec3([-4, 1, 0]), 1, Lambertian(Vec3([0.4, 0.2, 0.1]))))
+        objects.append(Sphere(np.array([-4.0, 1.0, 0.0]), 1, False, Lambertian(np.array([0.4, 0.2, 0.1]))))
 
         # Inserindo uma esfera grande do tipo Metal
-        objects.append(Sphere(Vec3([4, 1, 0]), 1, Metal(Vec3([0.7, 0.6, 0.5]), 0.0)))
+        objects.append(Sphere(np.array([4.0, 1.0, 0.0]), 1, False, Metal(np.array([0.7, 0.6, 0.5]), 0.0)))
 
         return objects
 
@@ -395,11 +423,11 @@ def main():
     print('255', file=f)
 
     # Definindo nossa câmera
-    cam_origin = Vec3([13.5, 1.5, 3])
-    cam_look_at = Vec3([0.0, 0.5, -1])
-    focus_dist = 10
+    cam_origin = np.array([13.5, 1.5, 3.0])
+    cam_look_at = np.array([0.0, 0.5, -1])
+    focus_dist = 9.8
     aperture = 0.1
-    cam = Camera(cam_origin, cam_look_at, Vec3([0, 1, 0]), 20, width / height, aperture, focus_dist)
+    cam = Camera(cam_origin, cam_look_at, np.array([0, 1, 0]), 20, width / height, aperture, focus_dist)
 
     # Definindo os objetos da nossa cena
     try:
@@ -413,12 +441,14 @@ def main():
     for j in range(height-1, -1, -1):
         for i in range(width):
             # Inicializando nosso vetor de cor
-            col = Vec3([.0, .0, .0])
+            col = np.array([.0, .0, .0])
 
             # Loop para o processo de antialiasing (disparar vários raios para o mesmo pixel)
             for _ in range(factor_antialiasing):
                 u = (i + rand()) / width
                 v = (j + rand()) / height
+
+                # world.update()
 
                 # Disparando um raio e acumulando a cor
                 ray = cam.shoot_ray(u, v)
@@ -432,7 +462,7 @@ def main():
 
             # Inserindo no arquivo a cor de cada pixel
             col *= 255.99
-            print(*col, file=f)
+            print(*col.astype(np.int64), file=f)
 
     # Fechando o arquivo
     f.close()
