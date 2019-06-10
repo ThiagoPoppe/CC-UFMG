@@ -270,9 +270,6 @@ class Sphere(Hitable):
         if self.__center[1] < self.__init_height:
             self.__velocity = np.array([0.0, 0.05, 0.0])
 
-        # if (self.__material.albedo() == np.array([0.8, 0.3, 0.3])).all():
-        #     print(self.__center[1])
-
     # Método estático para 
     @staticmethod
     def random_point():
