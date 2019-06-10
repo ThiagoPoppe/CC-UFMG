@@ -58,3 +58,6 @@
 <br><br>
 - Além da imagem final, gerei imagens para cada novo passo que dei no livro (todas com tamanho 200x100) e também a cena final sobre um outro ângulo de visão, modificando a posição da câmera. Essa cena, por sua vez, possui 200 esferas e tamanho 320x240.
 <br><br>
+
+# 4) Extras
+- Com o adiamento do trabalho prático, implementei um motion blur na cena final. Basicamente, cada esfera agora possui um atributo _bounce_, que indica se ela tem a propriedade de quicar, e a sua velocidade. Usamos a velocidade para modificar a posição do centro da esfera e em seguida modificamos sua velocidade usando um vetor _gravity_ que basicamente vai diminuindo a velocidade aos poucos, até a mesma ficar negativa. Ao chegarmos no chão, voltamos a velocidade para o seu valor inicial, fazendo com que a esfera sofra um "impulso", retornando assim para o seu movimento vertical. Note que essa colisão será perfeitamente elástica, ou seja, a nossa esfera ficará quicando para sempre.
