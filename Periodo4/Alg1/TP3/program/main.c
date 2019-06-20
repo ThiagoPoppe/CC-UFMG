@@ -25,7 +25,6 @@ int main(int argc, const char **argv) {
         insert_edge(g, v, u);
     }
 
-    printf("%d\n", min_vertex_cover(g, g->vertices[2]->head));
     aprox_min_vertex_cover(g);
 
     destroy_graph(g);

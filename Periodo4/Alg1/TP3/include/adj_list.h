@@ -12,6 +12,7 @@ typedef struct adj_list {
     Vertex* head;
     Vertex* tail;
     int degree;
+    int lost_edge;
 } Adj_List;
 
 // Função que cria uma lista de adjacência

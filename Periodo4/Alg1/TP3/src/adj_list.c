@@ -14,6 +14,7 @@ Adj_List* create_adj_list() {
     // Inicializando os campos da lista de adjacência
     l->head = NULL;
     l->tail = NULL;
+    l->lost_edge = 0;
     l->degree = 0;
 
     // Retornando a lista de adjacência
@@ -89,6 +90,7 @@ void remove_connection(Adj_List* l, int id) {
 
     // Desalocamos o vértice aux, e decrementamos o grau da nossa lista de adjacência
     free(aux);
+    l->lost_edge = 1;
     l->degree--;
 }
 

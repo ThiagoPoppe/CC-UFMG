@@ -32,7 +32,7 @@ void aprox_min_vertex_cover(Graph* g);
    Função que calcula o número de vértices que participam de uma
    instância válida mínima de um vertex cover do nosso grafo
 */
-// int min_vertex_cover(Graph* g, Vertex* current);
+int min_vertex_cover(Graph* g, Vertex* prev, Vertex* current, int isPart);
 
 // Função que imprime um grafo
 void print_graph(Graph* g);

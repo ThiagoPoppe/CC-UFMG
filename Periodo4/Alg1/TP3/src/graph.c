@@ -56,6 +56,15 @@ int max_degree_id(Graph* g) {
             max = g->vertices[i];
         }
 
+        // Caso o grau seja o mesmo, priorizamos os vértices que não ainda perderam arestas
+        else if (g->vertices[i]->degree == max->degree) {
+            if (!g->vertices[i]->lost_edge && max->lost_edge) {
+                max_id = i;
+                max = g->vertices[i];
+            }
+        }
+
+    // Retornando o id do vértice de maior grau
     return max_id;
 }
 
@@ -79,37 +88,13 @@ void aprox_min_vertex_cover(Graph* g) {
 }
 
 // Função auxiliar que retorna o mínimo de dois valores inteiros
-// int min(int a, int b) {
-//     return a < b ? a : b;
-// }
+int min(int a, int b) {
+    return a < b ? a : b;
+}
 
-// int min_vertex_cover(Graph* g, Vertex* current) {
-//     int size_including = 0, size_excluding = 0;
-//     Vertex* aux;
-
-//     // Caso o vértice não esteja ligado com nenhum outro, retornamos 0
-//     if (g->vertices[current->id]->degree == 0 || current == NULL)
-//         return 0;
-
-//     // Caso onde o vértice atual faz parte do vertex cover
-//     aux = current;
-//     while(aux != NULL) {
-//         if (g->vertices[aux->id]->head->id != aux->id)
-//             size_including += 1 + min_vertex_cover(g, g->vertices[aux->id]->head);
-//         aux = aux->next;
-//     }
-
-//     // Caso onde o vértice atual não faz parte do vertex cover
-//     aux = current;
-//     while (aux != NULL) {
-//         size_excluding += 1 + min_vertex_cover(g, g->vertices[aux->id]->head);
-//         aux = aux->next;
-//     }
-
-//     printf("%d, %d\n", size_including, size_excluding);
-
-//     return min(size_including, size_excluding);
-// }
+int min_vertex_cover(Graph* g, Vertex* prev, Vertex* current, int isPart) {  
+    
+}
 
 void print_graph(Graph* g) {
     for (int i = 0; i < g->num_vertices; i++) {
