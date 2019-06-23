@@ -53,21 +53,8 @@ void remove_edge(Graph* g, int u, int v) {
     // Removendo a aresta de u para v
     remove_id(g->vertices[u], v);
 
-<<<<<<< HEAD
     // Removendo a aresta de v para u
     remove_id(g->vertices[v], u);
-=======
-        // Caso o grau seja o mesmo, priorizamos os vértices que não ainda perderam arestas
-        else if (g->vertices[i]->degree == max->degree) {
-            if (!g->vertices[i]->lost_edge && max->lost_edge) {
-                max_id = i;
-                max = g->vertices[i];
-            }
-        }
-
-    // Retornando o id do vértice de maior grau
-    return max_id;
->>>>>>> c89f06c320ce897255a002e10a5af0824294261a
 }
 
 // Função que remove todas as arestas de um vértice
@@ -82,19 +69,7 @@ void remove_incident_edges(Graph* g, int v) {
     }
 }
 
-<<<<<<< HEAD
 // Função que imprime um grafo
-=======
-// Função auxiliar que retorna o mínimo de dois valores inteiros
-int min(int a, int b) {
-    return a < b ? a : b;
-}
-
-int min_vertex_cover(Graph* g, Vertex* prev, Vertex* current, int isPart) {  
-    
-}
-
->>>>>>> c89f06c320ce897255a002e10a5af0824294261a
 void print_graph(Graph* g) {
     // Percorrendo todos os vértices do grafo e imprimindo suas listas de adjacência
     for (int i = 0; i < g->num_vertices; i++) {

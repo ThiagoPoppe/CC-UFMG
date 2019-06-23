@@ -46,12 +46,8 @@ int main(int argc, const char** argv) {
     else
         printf("*** Não foi possível realizar a tarefa %s ***\n", argv[1]);
 
-<<<<<<< HEAD
     // Fechando o arquivo de entrada
     fclose(f_in);
-=======
-    aprox_min_vertex_cover(g);
->>>>>>> c89f06c320ce897255a002e10a5af0824294261a
 
     // Desalocando o grafo
     destroy_graph(g);
