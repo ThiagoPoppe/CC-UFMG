@@ -19,6 +19,13 @@ int min_vertex_cover(Graph* g, int v, int* vertex_cover) {
         return 0;
     }
 
+    // Removendo os vértices que possuem o mesmo id que o pai
+    Node* aux = g->vertices[v]->head;
+    while (aux != NULL) {
+        remove_id(g->vertices[aux->id], v);
+        aux = aux->next;
+    }
+
     // Caso o vértice faça parte da solução, chamamos a função para seus filhos
     int including = 1;
     Node* son = g->vertices[v]->head;
@@ -45,8 +52,10 @@ int min_vertex_cover(Graph* g, int v, int* vertex_cover) {
     }
 
     // Retornamos o mínimo entre o vértice fazendo parte ou não da solução
-    return min(including, excluding);
+    vertex_cover[v] = min(including, excluding);
+    return vertex_cover[v];
 }
+
 
 // Função que retorna o tamanho de uma instância mínima de um vertex-cover em uma árvore
 int tree_vertex_cover(Graph* g) {
@@ -60,7 +69,7 @@ int tree_vertex_cover(Graph* g) {
 }
 
 // Função que mostra o tamanho e vértices de uma instância aproximada (no máximo 2 vezes pior) de um vertex-cover
-void aprox_vertex_cover(Graph* g) {
+void approx_vertex_cover(Graph* g) {
     // Criando a lista que irá conter a solução para nosso problema
     List* vertex_cover = create_list();
     

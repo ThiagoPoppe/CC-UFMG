@@ -39,15 +39,6 @@ void insert_edge(Graph* g, int u, int v) {
     insert_end(g->vertices[v], u);
 }
 
-// Função que insere uma aresta direcionada do menor vértice para o maior em um grafo árvore
-void insert_edge_tree(Graph* g, int u, int v) {
-    // Verificamos qual vértice possui id menor e inserimos a aresta
-    if (u < v)
-        insert_end(g->vertices[u], v);
-    else
-        insert_end(g->vertices[v], u);
-}
-
 // Função que remove uma aresta do grafo
 void remove_edge(Graph* g, int u, int v) {
     // Removendo a aresta de u para v

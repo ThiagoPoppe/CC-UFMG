@@ -16,9 +16,6 @@ Graph* create_graph(int num_vertices, int num_edges);
 // Função que insere uma aresta em um grafo genérico
 void insert_edge(Graph* g, int u, int v);
 
-// Função que insere uma aresta direcionada do menor vértice para o maior em um grafo árvore
-void insert_edge_tree(Graph* g, int u, int v);
-
 // Função que remove uma aresta do grafo
 void remove_edge(Graph* g, int u, int v);
 

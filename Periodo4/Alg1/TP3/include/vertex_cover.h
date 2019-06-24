@@ -10,6 +10,6 @@ int min(int a, int b);
 int tree_vertex_cover(Graph* g);
 
 // Função que mostra o tamanho e vértices de uma instância aproximada (no máximo 2 vezes pior) de um vertex-cover
-void aprox_vertex_cover(Graph* g);
+void approx_vertex_cover(Graph* g);
 
 #endif
