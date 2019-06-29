@@ -5,8 +5,7 @@ import numpy as np
 sizeof = {
     'char': 1, 'short': 2, 'int': 4, 'float': 4,
     'md2_t': 68, 'vec3_t': 12, 'vertex_t': 4, 'texCoord_t': 4,
-    'frame_t': 40, 'triangle_t': 12, 'anim_t': 12, 'animState_t': 36,
-    'skins_t': 64
+    'frame_t': 40, 'triangle_t': 12, 'anim_t': 12, 'animState_t': 36
 }
 
 class TexCoord:
@@ -54,8 +53,8 @@ class MD2Model:
 
             # Lendo as skins do modelo
             f.seek(header[11])
-            data = f.read(header[5] * sizeof['skins_t'])
-            fmt = header[5] * '{}s'.format(sizeof['skins_t'])
+            data = f.read(header[5] * 64)
+            fmt = header[5] * '64s')
             self.skins = struct.unpack(fmt, data)
 
             # Lendo as coordenadas da textura
@@ -81,7 +80,6 @@ class MD2Model:
             fmt = header[9] * 'i'
             self.glcmds = struct.unpack(fmt, data)
 
-            
 
             
     # Método para carregar texturas
