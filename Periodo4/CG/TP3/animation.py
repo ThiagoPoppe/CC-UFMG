@@ -54,7 +54,7 @@ class MD2Model:
             # Lendo as skins do modelo
             f.seek(header[11])
             data = f.read(header[5] * 64)
-            fmt = header[5] * '64s')
+            fmt = header[5] * '64s'
             self.skins = struct.unpack(fmt, data)
 
             # Lendo as coordenadas da textura
