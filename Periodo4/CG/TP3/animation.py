@@ -1,14 +1,14 @@
 import sys
 import glfw
 import struct
-import numpy as np
 
+import numpy as np
 import OpenGL.GL.shaders as gl_shaders
+
+from PIL import Image
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
-
-width, height = 800, 600
 
 # Definindo uma lista com as normais precalculadas
 normals = [
@@ -176,6 +176,88 @@ normals = [
     [ -0.688191, -0.587785, -0.425325]
 ]
 
+# Criando o vertex_shader
+vertex_shader_phong = """
+#version 330 compatibility
+
+// Iremos passar para o fragment shader as posições dos vértices e as suas normais
+out vec4 position;
+out vec3 normal;
+
+void main() {
+    // Computando a normal (aplicando a transposta da inversa)
+    normal = normalize(gl_NormalMatrix * gl_Normal);
+    
+    // Computando as posições dos vértices (aplicando a matriz de ModelView)
+    position = gl_ModelViewMatrix * gl_Vertex;
+    
+    // Aplicando a matriz de ModelView e Projection sobre o nosso vértice de entrada
+    gl_Position = ftransform();
+}
+"""
+
+# Criando o fragment_shader
+fragment_shader_phong = """
+#version 330 compatibility
+
+// Recebemos do vertex shader os valores das posições dos vértices e as suas normais
+in vec4 position;
+in vec3 normal;
+
+// Uniform para a posição da fonte luz
+uniform vec3 lightPosition;
+
+// Uniform para a cor do nosso objeto
+uniform vec3 objColor;
+
+// Váriaveis const float para guardar a contribuição especular e difusa
+const float specularContrib = 0.4;
+const float diffuseContrib = 1.0 - specularContrib;
+
+// Cor de saída
+out vec4 outColor;
+
+void main() {
+    // Vec3 para a posição do nosso vértice e normal
+    vec3 p = vec3(gl_ModelViewMatrix * position);
+    vec3 n = normalize(gl_NormalMatrix * normal);
+
+    // Computando a direção da nossa luz
+    vec3 lightDir = normalize(lightPosition - p);
+    
+    // Computando o R
+    vec3 R = reflect(lightDir, n);
+    
+    // Computando o viewVec
+    vec3 viewVec = normalize(-p);
+    
+    // Computando o componente difuso (produto escalar entre a direção da luz e a normal)
+    float diffuse = max(0.0, dot(lightDir, n));
+    
+    // Computando o componente especular
+    float spec = 0.0;
+    if (diffuse > 0.0) {
+        // Cosseno do ângulo entre R e viewVec (em outras palavras, produto escalar)
+        spec = max(0.0, dot(R, viewVec));
+        
+        // Parte da fórmula do cosseno elevado a um "n"
+        spec = pow(spec, 64.0);
+    }
+
+    // Calculando a intensidade da luz
+    float intensity = (diffuse * diffuseContrib) + (spec * specularContrib);
+    
+    // Definindo uma luz de ambiente
+    vec3 ambientLight = vec3(0.15, 0.1, 0.1);
+    
+    // Exibindo a cor
+    outColor = vec4(ambientLight + objColor * intensity, 1.0);
+}
+"""
+
+# Definindo a largura e altura da janela
+width, height = 800, 600
+
 # Definindo o tamanho em bytes dos tipos de dados
 sizeof = {
     'char': 1, 'short': 2, 'int': 4, 'float': 4,
@@ -330,6 +412,29 @@ class MD2Model:
 
             return True
 
+    # Método para carregar uma textura para o modelo (retirado de http://www.magikcode.com/?p=122)
+    def loadTexture(self, filename):
+        # PIL can open BMP, EPS, FIG, IM, JPEG, MSP, PCX, PNG, PPM
+        # and other file types.  We convert into a texture using GL.
+        print('trying to open', filename)
+        try:
+            image = Image.open(filename)
+        except:
+            print('IOError: failed to open texture file')
+            return -1
+        print('opened file: size=', image.size, 'format=', image.format)
+        imageData = np.array(list(image.getdata()), np.uint8)
+
+        textureID = glGenTextures(1)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
+        glBindTexture(GL_TEXTURE_2D, textureID)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.size[0], image.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, imageData)
+
+        image.close()
+        return textureID
+
     def renderFrame(self, n):
         # Verificando se o índice para o frame é válido
         if n < 0 or n > self.header.numFrames - 1:
@@ -337,7 +442,7 @@ class MD2Model:
 
         # Obtendo o frame desejado
         frame = self.frames[n]
-        
+
         glBindTexture(GL_TEXTURE_2D, self.texId)
 
         # Desenhando o modelo
@@ -368,93 +473,20 @@ class MD2Model:
                 glVertex3f(x, y, z)
         glEnd()
 
-
-# Criando o vertex_shader
-vertex_shader_phong = """
-#version 330 compatibility
-
-// Iremos passar para o fragment shader as posições dos vértices e as suas normais
-out vec4 position;
-out vec3 normal;
-
-void main() {
-    // Computando a normal (aplicando a transposta da inversa)
-    normal = normalize(gl_NormalMatrix * gl_Normal);
-    
-    // Computando as posições dos vértices (aplicando a matriz de ModelView)
-    position = gl_ModelViewMatrix * gl_Vertex;
-    
-    // Aplicando a matriz de ModelView e Projection sobre o nosso vértice de entrada
-    gl_Position = ftransform();
-}
-"""
-
-# Criando o fragment_shader
-fragment_shader_phong = """
-#version 330 compatibility
-
-// Recebemos do vertex shader os valores das posições dos vértices e as suas normais
-in vec4 position;
-in vec3 normal;
-
-// Uniform para a posição da fonte luz
-uniform vec3 lightPosition;
-
-// Uniform para a cor do nosso objeto
-uniform vec3 objColor;
-
-// Váriaveis const float para guardar a contribuição especular e difusa
-const float specularContrib = 0.4;
-const float diffuseContrib = 1.0 - specularContrib;
-
-// Cor de saída
-out vec4 outColor;
-
-void main() {
-    // Vec3 para a posição do nosso vértice e normal
-    vec3 p = vec3(gl_ModelViewMatrix * position);
-    vec3 n = normalize(gl_NormalMatrix * normal);
-
-    // Computando a direção da nossa luz
-    vec3 lightDir = normalize(lightPosition - p);
-    
-    // Computando o R
-    vec3 R = reflect(lightDir, n);
-    
-    // Computando o viewVec
-    vec3 viewVec = normalize(-p);
-    
-    // Computando o componente difuso (produto escalar entre a direção da luz e a normal)
-    float diffuse = max(0.0, dot(lightDir, n));
-    
-    // Computando o componente especular
-    float spec = 0.0;
-    if (diffuse > 0.0) {
-        // Cosseno do ângulo entre R e viewVec (em outras palavras, produto escalar)
-        spec = max(0.0, dot(R, viewVec));
-        
-        // Parte da fórmula do cosseno elevado a um "n"
-        spec = pow(spec, 64.0);
-    }
-
-    // Calculando a intensidade da luz
-    float intensity = (diffuse * diffuseContrib) + (spec * specularContrib);
-    
-    // Definindo uma luz de ambiente
-    vec3 ambientLight = vec3(0.15, 0.1, 0.1);
-    
-    // Exibindo a cor
-    outColor = vec4(ambientLight + objColor * intensity, 1.0);
-}
-"""
+    def drawModel(self):
+        glPushMatrix()
+        glRotatef(-90, 1, 0, 0)
+        glRotatef(-90, 0, 0, 1)
+        self.renderFrame(0)
+        glPopMatrix()
 
 # Função principal
 def main():
     # Criando nosso modelo
-    model = MD2Model()
+    OgroModel = MD2Model()
 
     # Carregando o modelo
-    if not model.loadModel(sys.argv[1]):
+    if not OgroModel.loadModel(sys.argv[1]):
         print('Não foi possível carregar o arquivo', sys.argv[1])
         exit(1)
 
@@ -464,11 +496,14 @@ def main():
         exit(1)
 
     # Criando uma janela
-    window = glfw.create_window(width, height, 'Testando código', None, None)
+    window = glfw.create_window(width, height, 'Ogro Model', None, None)
     if not window:
         print('Não foi possível criar a janela')
         glfw.terminate()
         exit(1)
+
+    # Definindo a posição da janela na tela
+    glfw.set_window_pos(window, 30, 60)
 
     # Tornando a janela criada o contexto atual
     glfw.make_context_current(window)
@@ -501,13 +536,10 @@ def main():
     # Definindo o tipo de projeção
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(45.0, width/height, 0.1, 100.0)
+    gluPerspective(45.0, width/height, 0.1, 500.0)
 
-    # Transladando a esfera para aparecer na tela
-
-    glTranslatef(0.0, 0.0, -80.0)
-    glRotatef(-65, 1, 0, 0)
-    glRotatef(-100, 0, 0, 1)
+    # Transladando o modelo para aparecer na tela
+    glTranslatef(0.0, 0.0, -100.0)
 
     # MAIN LOOP
     while not glfw.window_should_close(window):
@@ -516,8 +548,8 @@ def main():
 
         # Limpando os buffers
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-        model.renderFrame(0)
+        
+        OgroModel.drawModel()
 
         # Desenhando na tela
         glfw.swap_buffers(window)
