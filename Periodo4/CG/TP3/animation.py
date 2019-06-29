@@ -1,44 +1,38 @@
+import struct
 import numpy as np
 
-class MD2Header:
-    """ Classe para o Header de um arquivo MD2 """
+# Definindo o tamanho em bytes dos tipos de dados
+sizeof = {
+    'char': 1, 'short': 2, 'int': 4, 'float': 4,
+    'md2_t': 68, 'vec3_t': 12, 'vertex_t': 4, 'texCoord_t': 4,
+    'frame_t': 40, 'triangle_t': 12, 'anim_t': 12, 'animState_t': 36,
+    'skins_t': 64
+}
+
+class TexCoord:
+    """ Classe para coordenadas de textura do modelo """
+    
+    # Método construtor da classe
+    def __init__(self, s, t):
+        self.s = s
+        self.t = t
+
+class Triangle:
+    """ Classe para os triângulos do modelo """
 
     # Método construtor da classe
-    def __init__(self, data):
-        self.ident = data[0]       # magic number. must be equal to "IDP2"
-        self.version = data[1]     # md2 version. must be equal to 8
-
-        self.skinwidth = data[2]   # width of the texture
-        self.skinheight = data[3]  # height of the texture
-        self.framesize = data[4]   # size of one frame in bytes
-
-        self.num_skins = data[5]   # number of textures
-        self.num_xyz = data[6]     # number of vertices
-        self.num_st = data[7]      # number of texture coordinates
-        self.num_tris = data[8]    # number of triangles
-        self.num_glcmds = data[9]  # number of opengl commands
-        self.num_frames = data[10] # total number of frames
-
-        self.ofs_skins = data[11]  # offset to skin names (64 bytes each)
-        self.ofs_st = data[12]     # offset to s-t texture coordinates
-        self.ofs_tris = data[13]   # offset to triangles
-        self.ofs_frames = data[14] # offset to frame data
-        self.ofs_glcmds = data[15] # offset to opengl commands
-        self.ofs_end = data[16]    # offset to end of file
+    def __init__(self, v, texCoord):
+        self.v = v
+        self.texCoord = texCoord
 
 class MD2Model:
     """ Classe para um modelo MD2 """
 
     # Método construtor da classe
     def __init__(self):
-        # Lista de vértices, normais para iluminação e comandos da OpenGL
-        self.vertices = []
-        self.normals = []
-        self.gl_cmds = []
-
         # Escala do objeto (1.0 -> sem escala) e o id da textura
         self.scale = 1.0
-        self.tex_id = 0
+        self.texid = 0
 
         # Iniciamos o modelo com a animação 0
         self.set_animation(0)
@@ -46,35 +40,50 @@ class MD2Model:
     # Método para carregar um modelo MD2
     def load_model(self, filename):
         # Abrindo o arquivo .md2 (arquivo binário)
-        with open(filename, 'rb') as f:
-            # Criando uma lista para conter os dados do header
-            header_data = []
-
-            # Lendo os 17 dados
-            for _ in range(0, 17):
-                # Leitura do dado (cada um com offset de 4)
-                data = f.read(4)
-                data = int.from_bytes(data, byteorder='little')
-                header_data.append(data)
-
-            # Passando a lista com os dados para a classe MD2Header
-            header = MD2Header(header_data)
+        with open(filename, 'rb') as f:            
+            # Lendo o header do arquivo
+            data = f.read(sizeof['md2_t'])
+            fmt = '17i'
+            header = struct.unpack(fmt, data)
 
             # Verificando se o arquivo possui ident = IPD2 e versão = 8
-            if header.ident != 844121161 and header.version != 8:
+            if header[0] != 844121161 and header[1] != 8:
+                print('Bad version or identifier')
                 f.close()
                 return False
 
-            # Lendo o frame data
-            f.seek(header.ofs_frames, 0)
-            self.buffer = f.read(header.num_frames * header.framesize)
+            # Lendo as skins do modelo
+            f.seek(header[11])
+            data = f.read(header[5] * sizeof['skins_t'])
+            fmt = header[5] * '{}s'.format(sizeof['skins_t'])
+            self.skins = struct.unpack(fmt, data)
 
-            # Lendo os comandos da OpenGL (4 representa o sizeof(int))
-            f.seek(header.ofs_glcmds, 0)
-            self.gl_cmds = f.read(header.ofs_glcmds * 4)
+            # Lendo as coordenadas da textura
+            f.seek(header[12])
+            data = f.read(header[7] * sizeof['texCoord_t'])
+            fmt = header[7] * '2h'
+
+            temp = struct.unpack(fmt, data)
+            self.texcoords = [TexCoord(temp[i], temp[i+1]) for i in range(0, len(temp), 2)]
 
 
+            # Lendo os triângulos do modelo
+            f.seek(header[13])
+            data = f.read(header[8] * sizeof['triangle_t'])
+            fmt = header[8] * '6H'
 
+            temp = struct.unpack(fmt, data)
+            self.triangles = [Triangle(temp[i:i+3], temp[i+3:i+6]) for i in range(0, len(temp), 6)]
+
+            # Lendo os comandos da OpenGL
+            f.seek(header[15])
+            data = f.read(header[9] * sizeof['int'])
+            fmt = header[9] * 'i'
+            self.glcmds = struct.unpack(fmt, data)
+
+            
+
+            
     # Método para carregar texturas
     def load_texture(self, filename):
         pass
