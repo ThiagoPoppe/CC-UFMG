@@ -1,3 +1,4 @@
+import sys
 import struct
 import numpy as np
 
@@ -9,7 +10,7 @@ sizeof = {
 }
 
 class TexCoord:
-    """ Classe para coordenadas de textura do modelo """
+    """ Classe para as coordenadas de textura do modelo """
     
     # Método construtor da classe
     def __init__(self, s, t):
@@ -23,6 +24,24 @@ class Triangle:
     def __init__(self, v, texCoord):
         self.v = v
         self.texCoord = texCoord
+
+class Vertex:
+    """ Classe para os vértices do frame """
+
+    # Método construtor da classe
+    def __init__(self, v, normalIndex):
+        self.v = v
+        self.normalIndex = normalIndex
+
+class Frame:
+    """ Classe para os frames do modelo """
+    
+    # Método construtor da classe
+    def __init__(self, scl, translate, name, vertices):
+        self.scl = scl
+        self.translate = translate
+        self.name = name
+        self.vertices = vertices
 
 class MD2Model:
     """ Classe para um modelo MD2 """
@@ -65,7 +84,6 @@ class MD2Model:
             temp = struct.unpack(fmt, data)
             self.texcoords = [TexCoord(temp[i], temp[i+1]) for i in range(0, len(temp), 2)]
 
-
             # Lendo os triângulos do modelo
             f.seek(header[13])
             data = f.read(header[8] * sizeof['triangle_t'])
@@ -80,7 +98,35 @@ class MD2Model:
             fmt = header[9] * 'i'
             self.glcmds = struct.unpack(fmt, data)
 
+            # Criando uma lista para guardar os frames do modelo
+            self.frames = []
 
+            # Lendo os frames do modelo
+            f.seek(header[14])
+            for _ in range(header[10]):
+                # Lendo os campos scale, translate e name do frame
+                data = f.read(sizeof['frame_t'])
+                fmt = '3f3f16s'
+                temp = struct.unpack(fmt, data)
+                
+                # Salvando esses valores lidos
+                scl = temp[0:3]
+                translate = temp[3:6]
+                name = temp[6:22][0]
+
+                # Lendo os vértices do frame
+                data = f.read(header[6] * sizeof['vertex_t'])
+                fmt = header[6] * '3B1B'
+                temp = struct.unpack(fmt, data)
+
+                # Construindo uma lista de vértices
+                vertices = [Vertex(temp[i:i+3], temp[i+3]) for i in range(0, len(temp), 4)]
+                
+                # Adicionando o novo frame à lista
+                frame = Frame(scl, translate, name, vertices)
+                self.frames.append(frame)
+            
+            return True
             
     # Método para carregar texturas
     def load_texture(self, filename):
@@ -120,8 +166,11 @@ class MD2Model:
 
 # Função principal
 def main():
+    # Criando nosso modelo
     model = MD2Model()
-    model.load_model('q2 md2 loader us/bin/models/Ogros.md2')
+
+    # Carregando o modelo
+    model.load_model(sys.argv[1])    
 
 # Chamando a função principal
 if __name__ == '__main__':
