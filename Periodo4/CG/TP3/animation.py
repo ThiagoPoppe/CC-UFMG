@@ -1,6 +1,7 @@
 import sys
 import glfw
 import struct
+import time
 
 import numpy as np
 import OpenGL.GL.shaders as gl_shaders
@@ -292,6 +293,40 @@ class MD2Header:
         self.offsetFrames = header[14]  # Offset para os dados dos frames
         self.offsetGLCmds = header[15]  # Offset para os dados dos comandos da OpenGL
 
+class Anim:
+    """ Classe para as animações """
+
+    # Método construtor da classse
+    def __init__(self, firstFrame, lastFrame, fps):
+        self.firstFrame = firstFrame
+        self.lastFrame = lastFrame
+        self.fps = fps
+
+# Definindo as 21 animações do modelo MD2 (nome: primeiro, último, fps)
+animations = {
+    'STAND': Anim(0, 39, 9), 'RUN': Anim(40,  45, 10), 'ATTACK': Anim(46, 53, 10), 'PAIN_A': Anim(54, 57, 7),
+    'PAIN_B': Anim(58, 61, 7), 'PAIN_C': Anim(62, 65, 7), 'JUMP': Anim(66, 71, 7), 'FLIP': Anim(72, 83, 7),
+    'SALUTE': Anim(84, 94, 7), 'FALLBACK': Anim(95, 111, 10), 'WAVE': Anim(112, 122, 7), 'POINT': Anim(123, 134, 6),
+    'CROUCH_STAND': Anim(135, 153, 10), 'CROUCH_WALK': Anim(154, 159, 7), 'CROUCH_ATTACK': Anim(160, 168, 10),
+    'CROUCH_PAIN': Anim(169, 172, 7), 'CROUCH_DEATH': Anim(173, 177, 5), 'DEATH_FALLBACK': Anim(178, 183, 7),
+    'DEATH_FALLFORWARD': Anim(184, 189, 7), 'DEATH_FALLBACKSLOW': Anim(190, 197, 7), 'BOOM': Anim(198, 198, 5)
+}
+
+class AnimState:
+    """ Classe para o estado da animação """
+
+    # Método construtor da classe
+    def __init__(self, anim, currTime, oldTime, interpol, typeName, currFrame, nextFrame):
+        self.startFrame = anim.firstFrame
+        self.endFrame = anim.lastFrame
+        self.fps = anim.fps
+        self.currTime = currTime
+        self.oldTime = oldTime
+        self.interpol = interpol
+        self.type = typeName
+        self.currFrame = currFrame
+        self.nextFrame = nextFrame
+
 class TexCoord:
     """ Classe para as coordenadas de textura do modelo """
     
@@ -320,9 +355,7 @@ class Frame:
     """ Classe para os frames do modelo """
     
     # Método construtor da classe
-    def __init__(self, scl, translate, name, vertices):
-        self.scl = scl
-        self.translate = translate
+    def __init__(self, name, vertices):
         self.name = name
         self.vertices = vertices
 
@@ -336,7 +369,7 @@ class MD2Model:
         self.texId = 0
 
         # Iniciamos o modelo com a animação 0
-        # self.set_animation(0)
+        self.setAnimation('STAND')
 
     # Método para carregar um modelo MD2
     def loadModel(self, filename):
@@ -405,79 +438,158 @@ class MD2Model:
 
                 # Construindo uma lista de vértices
                 vertices = [Vertex(temp[i:i+3], temp[i+3]) for i in range(0, len(temp), 4)]
-                
+ 
+                # "Descomprimindo" os vértices
+                for i, vertex in enumerate(vertices):
+                    x = vertex.v[0] * scl[0] + translate[0]
+                    y = vertex.v[1] * scl[1] + translate[1]
+                    z = vertex.v[2] * scl[2] + translate[2]
+
+                    vertices[i] = Vertex([x, y, z], vertex.normalIndex)
+
                 # Adicionando o novo frame à lista
-                frame = Frame(scl, translate, name, vertices)
+                frame = Frame(name, vertices)
                 self.frames.append(frame)
 
             return True
 
-    # Método para carregar uma textura para o modelo (retirado de http://www.magikcode.com/?p=122)
-    def loadTexture(self, filename):
-        # PIL can open BMP, EPS, FIG, IM, JPEG, MSP, PCX, PNG, PPM
-        # and other file types.  We convert into a texture using GL.
-        print('trying to open', filename)
-        try:
-            image = Image.open(filename)
-        except:
-            print('IOError: failed to open texture file')
-            return -1
-        print('opened file: size=', image.size, 'format=', image.format)
-        imageData = np.array(list(image.getdata()), np.uint8)
-
-        textureID = glGenTextures(1)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
-        glBindTexture(GL_TEXTURE_2D, textureID)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.size[0], image.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE, imageData)
-
-        image.close()
-        return textureID
-
-    def renderFrame(self, n):
-        # Verificando se o índice para o frame é válido
-        if n < 0 or n > self.header.numFrames - 1:
+    # Método para definir a animação do modelo
+    def setAnimation(self, name):
+        # Verificando se o tipo existe
+        if not name in animations:
+            print('Animação {} não existe'.format(name))
             return
 
-        # Obtendo o frame desejado
-        frame = self.frames[n]
+        currFrame = animations[name].firstFrame
+        nextFrame = currFrame + 1
+        self.animation = AnimState(animations[name], 0, 0, 0, name, currFrame, nextFrame)
 
-        glBindTexture(GL_TEXTURE_2D, self.texId)
+    # Método que retorna os vértices do frame atual interpolados
+    def lerp_vertices(self):
+        v = []
 
-        # Desenhando o modelo
-        glBegin(GL_TRIANGLES)
-        # Iterando sobre os triângulos
-        for i in range(self.header.numTriangles):
-            # Iterando sobre cada vértice
-            for j in range(3):
-                # Obtendo o i-esimo vértice daquele triângulo
-                vertex = frame.vertices[self.triangles[i].v[j]]
+        curr_vertices = self.frames[self.animation.currFrame].vertices
+        next_vertices = self.frames[self.animation.nextFrame].vertices
 
-                # Compute texture coordinates
-                s = self.texCoords[self.triangles[i].texCoord[j]].s / self.header.skinWidth
-                t = self.texCoords[self.triangles[i].texCoord[j]].t / self.header.skinHeight
+        # Interpolando os vértices
+        for i in range(self.header.numVertices):
+            x = (curr_vertices[i].v[0] + self.animation.interpol * (next_vertices[i].v[0] - curr_vertices[i].v[0])) * self.scl
+            y = (curr_vertices[i].v[1] + self.animation.interpol * (next_vertices[i].v[1] - curr_vertices[i].v[1])) * self.scl
+            z = (curr_vertices[i].v[2] + self.animation.interpol * (next_vertices[i].v[2] - curr_vertices[i].v[2])) * self.scl
 
-                # /* Pass texture coordinates to OpenGL */
-                glTexCoord2f(s, t)
+            v.append([x, y, z])
 
-                # Passando para a OpenGL a normal daquele vértice
-                glNormal3fv(normals[vertex.normalIndex])
+        return v
 
-                # Calculando a posição real do vértice
-                x = frame.scl[0] * vertex.v[0] + frame.translate[0]
-                y = frame.scl[1] * vertex.v[1] + frame.translate[1]
-                z = frame.scl[2] * vertex.v[2] + frame.translate[2]
+    # Método para renderizar o frame do modelo
+    def renderFrame(self):
+        # Revertendo a orientação da face frontal
+        # Usamos polygons pois os comandos da GL usam uma lista de triângulos
+        # que possuem contagem no sentido horário
+        glPushAttrib(GL_POLYGON_BIT)
+        glFrontFace(GL_CW)
 
-                # Desenhando aquele vértice
-                glVertex3f(x, y, z)
-        glEnd()
+        # Habilitando backface culling
+        glEnable(GL_CULL_FACE)
+        glCullFace(GL_BACK)
 
-    def drawModel(self):
+        # Interpolando os vértices
+        # vertices = self.lerp_vertices()
+
+        # Desenhando cada triângulo
+        i = 0
+        while i < len(self.glcmds):
+            # Obtendo o comando
+            cmd = self.glcmds[i]
+            i += 1
+
+            # Caso o sinal seja negativo usamos GL_TRIANGLE_FAN
+            if cmd < 0:
+                glBegin(GL_TRIANGLE_FAN)
+                cmd *= -1
+
+            # Caso contrário usamos GL_TRIANGLE_STRIP
+            else:
+                glBegin(GL_TRIANGLE_STRIP)
+
+            # Enquanto o comdando for > 0 iremos fazer o seguinte passo
+            while cmd > 0:
+                # Obtendo coordenadas de textura e o índice do vértice a ser exibido
+                s = self.glcmds[i]
+                t = self.glcmds[i+1]
+                idx = self.glcmds[i+2]
+
+                # Obtendo os vértices dos frames atual e próximo
+                curr_vertex = self.frames[self.animation.currFrame].vertices[idx]
+                next_vertex = self.frames[self.animation.nextFrame].vertices[idx]
+
+                # Obtendo as normais dos frames atual e próximo
+                curr_normal = normals[curr_vertex.normalIndex]
+                next_normal = normals[next_vertex.normalIndex]
+                
+                # Interpolando as normais
+                x = curr_normal[0] + self.animation.interpol * (next_normal[0] - curr_normal[0])
+                y = curr_normal[1] + self.animation.interpol * (next_normal[1] - curr_normal[1])
+                z = curr_normal[2] + self.animation.interpol * (next_normal[2] - curr_normal[2])
+
+                # Passando para a OpenGL a normal interpolada
+                glNormal3fv([x, y, z])
+
+                # Interpolando os vértices
+                x = curr_vertex.v[0] + self.animation.interpol * (next_vertex.v[0] - curr_vertex.v[0])
+                y = curr_vertex.v[1] + self.animation.interpol * (next_vertex.v[1] - curr_vertex.v[1])
+                z = curr_vertex.v[2] + self.animation.interpol * (next_vertex.v[2] - curr_vertex.v[2])
+
+                # Desenhando o vértice
+                glVertex3fv([x, y, z])
+
+                cmd -= 1
+                i += 3
+
+            glEnd()
+
+        glDisable(GL_CULL_FACE)
+        glPopAttrib()
+
+    # Método para animar o modelo
+    def animateModel(self, time):
+        # Definindo o tempo atual da animação
+        self.animation.currTime = time
+
+        # Calculando o frame atual e o próximo
+        delta = self.animation.currTime - self.animation.oldTime
+        if delta > (1 / self.animation.fps):
+            self.animation.currFrame = self.animation.nextFrame
+            self.animation.nextFrame += 1
+
+            if self.animation.nextFrame > self.animation.endFrame:
+                self.animation.nextFrame = self.animation.startFrame
+
+            self.animation.oldTime = self.animation.currTime
+
+        # Previnindo que os frames atuais e próximos exceda o limite de frames
+        if self.animation.currFrame > self.header.numFrames - 1:
+            self.animation.currFrame = 0
+
+        if self.animation.nextFrame > self.header.numFrames - 1:
+            self.animation.nextFrame = 0
+
+        # Definindo a taxa de interpolação
+        self.animation.interpol = self.animation.fps * (self.animation.currTime - self.animation.oldTime )
+
+    # Método para desenhar o modelo
+    def drawModel(self, time):
+        # Se o tempo for maior que 0, animamos o modelo
+        if time > 0:
+            self.animateModel(time)
+
         glPushMatrix()
+        # Rotacionando o modelo
         glRotatef(-90, 1, 0, 0)
         glRotatef(-90, 0, 0, 1)
-        self.renderFrame(0)
+        
+        # Renderizando o modelo
+        self.renderFrame()
         glPopMatrix()
 
 # Função principal
@@ -536,7 +648,7 @@ def main():
     # Definindo o tipo de projeção
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(45.0, width/height, 0.1, 500.0)
+    gluPerspective(45.0, width/height, 0.1, 1000.0)
 
     # Transladando o modelo para aparecer na tela
     glTranslatef(0.0, 0.0, -100.0)
@@ -549,7 +661,8 @@ def main():
         # Limpando os buffers
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        OgroModel.drawModel()
+        # Renderizando o modelo
+        OgroModel.drawModel(time.time())
 
         # Desenhando na tela
         glfw.swap_buffers(window)
