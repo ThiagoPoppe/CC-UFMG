@@ -178,58 +178,33 @@ normals = [
 ]
 
 # Criando o vertex_shader
+# Criando o vertex_shader
 vertex_shader_phong = """
 #version 330 compatibility
 
-// Iremos passar para o fragment shader as posições dos vértices e as suas normais
-out vec4 position;
-out vec3 normal;
-
-void main() {
-    // Computando a normal (aplicando a transposta da inversa)
-    normal = normalize(gl_NormalMatrix * gl_Normal);
-    
-    // Computando as posições dos vértices (aplicando a matriz de ModelView)
-    position = gl_ModelViewMatrix * gl_Vertex;
-    
-    // Aplicando a matriz de ModelView e Projection sobre o nosso vértice de entrada
-    gl_Position = ftransform();
-}
-"""
-
-# Criando o fragment_shader
-fragment_shader_phong = """
-#version 330 compatibility
-
-// Recebemos do vertex shader os valores das posições dos vértices e as suas normais
-in vec4 position;
-in vec3 normal;
-
 // Uniform para a posição da fonte luz
 uniform vec3 lightPosition;
-
-// Uniform para a cor do nosso objeto
-uniform vec3 objColor;
 
 // Váriaveis const float para guardar a contribuição especular e difusa
 const float specularContrib = 0.4;
 const float diffuseContrib = 1.0 - specularContrib;
 
-// Cor de saída
-out vec4 outColor;
+// Váriavel para guardar a intensidade da luz naquele ponto
+// Note que dessa vez iremos interpolar os valores
+varying float intensity;
 
 void main() {
     // Vec3 para a posição do nosso vértice e normal
-    vec3 p = vec3(gl_ModelViewMatrix * position);
-    vec3 n = normalize(gl_NormalMatrix * normal);
-
-    // Computando a direção da nossa luz
+    vec3 p = vec3(gl_ModelViewMatrix * gl_Vertex);
+    vec3 n = normalize(gl_NormalMatrix * gl_Normal);
+    
+    // Computando a direção da luz
     vec3 lightDir = normalize(lightPosition - p);
     
-    // Computando o R
+    // Computando o vetor R
     vec3 R = reflect(lightDir, n);
-    
-    // Computando o viewVec
+
+    // Computando o vetor viewVec
     vec3 viewVec = normalize(-p);
     
     // Computando o componente difuso (produto escalar entre a direção da luz e a normal)
@@ -246,9 +221,29 @@ void main() {
     }
 
     // Calculando a intensidade da luz
-    float intensity = (diffuse * diffuseContrib) + (spec * specularContrib);
+    intensity = (diffuse * diffuseContrib) + (spec * specularContrib);
     
-    // Definindo uma luz de ambiente
+    // Aplicando a matriz de ModelView e Projection sobre o nosso vértice de entrada
+    gl_Position = ftransform();
+}
+"""
+
+# Criando o fragment_shader
+fragment_shader_phong = """
+#version 330 compatibility
+
+// Uniform para a cor do nosso objeto
+uniform vec3 objColor;
+
+// Váriavel para guardar a intensidade da luz naquele ponto
+// Note que dessa vez iremos interpolar os valores
+varying float intensity;
+
+// Cor de saída
+out vec4 outColor;
+
+void main() {
+    // Definindo uma luz ambiente
     vec3 ambientLight = vec3(0.15, 0.1, 0.1);
     
     // Exibindo a cor
