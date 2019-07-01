@@ -1,15 +1,13 @@
-import sys
 import glfw
-import struct
-import time
 
-import numpy as np
 import OpenGL.GL.shaders as gl_shaders
 
-from PIL import Image
+from sys import argv
+from time import time
+from struct import unpack
+from OpenGL.GLU import gluPerspective
 
 from OpenGL.GL import *
-from OpenGL.GLU import *
 
 # Definindo uma lista com as normais precalculadas
 normals = [
@@ -178,33 +176,58 @@ normals = [
 ]
 
 # Criando o vertex_shader
-# Criando o vertex_shader
 vertex_shader_phong = """
 #version 330 compatibility
 
+// Iremos passar para o fragment shader as posições dos vértices e as suas normais
+out vec4 position;
+out vec3 normal;
+
+void main() {
+    // Computando a normal (aplicando a transposta da inversa)
+    normal = normalize(gl_NormalMatrix * gl_Normal);
+    
+    // Computando as posições dos vértices (aplicando a matriz de ModelView)
+    position = gl_ModelViewMatrix * gl_Vertex;
+    
+    // Aplicando a matriz de ModelView e Projection sobre o nosso vértice de entrada
+    gl_Position = ftransform();
+}
+"""
+
+# Criando o fragment_shader
+fragment_shader_phong = """
+#version 330 compatibility
+
+// Recebemos do vertex shader os valores das posições dos vértices e as suas normais
+in vec4 position;
+in vec3 normal;
+
 // Uniform para a posição da fonte luz
 uniform vec3 lightPosition;
+
+// Uniform para a cor do nosso objeto
+uniform vec3 objColor;
 
 // Váriaveis const float para guardar a contribuição especular e difusa
 const float specularContrib = 0.4;
 const float diffuseContrib = 1.0 - specularContrib;
 
-// Váriavel para guardar a intensidade da luz naquele ponto
-// Note que dessa vez iremos interpolar os valores
-varying float intensity;
+// Cor de saída
+out vec4 outColor;
 
 void main() {
     // Vec3 para a posição do nosso vértice e normal
-    vec3 p = vec3(gl_ModelViewMatrix * gl_Vertex);
-    vec3 n = normalize(gl_NormalMatrix * gl_Normal);
-    
-    // Computando a direção da luz
+    vec3 p = vec3(gl_ModelViewMatrix * position);
+    vec3 n = normalize(gl_NormalMatrix * normal);
+
+    // Computando a direção da nossa luz
     vec3 lightDir = normalize(lightPosition - p);
     
-    // Computando o vetor R
+    // Computando o R
     vec3 R = reflect(lightDir, n);
-
-    // Computando o vetor viewVec
+    
+    // Computando o viewVec
     vec3 viewVec = normalize(-p);
     
     // Computando o componente difuso (produto escalar entre a direção da luz e a normal)
@@ -221,29 +244,9 @@ void main() {
     }
 
     // Calculando a intensidade da luz
-    intensity = (diffuse * diffuseContrib) + (spec * specularContrib);
+    float intensity = (diffuse * diffuseContrib) + (spec * specularContrib);
     
-    // Aplicando a matriz de ModelView e Projection sobre o nosso vértice de entrada
-    gl_Position = ftransform();
-}
-"""
-
-# Criando o fragment_shader
-fragment_shader_phong = """
-#version 330 compatibility
-
-// Uniform para a cor do nosso objeto
-uniform vec3 objColor;
-
-// Váriavel para guardar a intensidade da luz naquele ponto
-// Note que dessa vez iremos interpolar os valores
-varying float intensity;
-
-// Cor de saída
-out vec4 outColor;
-
-void main() {
-    // Definindo uma luz ambiente
+    // Definindo uma luz de ambiente
     vec3 ambientLight = vec3(0.15, 0.1, 0.1);
     
     // Exibindo a cor
@@ -256,9 +259,17 @@ width, height = 800, 600
 
 # Definindo o tamanho em bytes dos tipos de dados
 sizeof = {
-    'char': 1, 'short': 2, 'int': 4, 'float': 4,
-    'md2_t': 68, 'vec3_t': 12, 'vertex_t': 4, 'texCoord_t': 4,
-    'frame_t': 40, 'triangle_t': 12, 'anim_t': 12, 'animState_t': 36
+    'int': 4, 'md2_t': 68, 'vertex_t': 4, 'frame_t': 40
+}
+
+# Definindo as 21 animações do modelo MD2 (nome: primeiro, último, fps)
+animations = {
+    'STAND': [0, 39, 9], 'RUN': [40,  45, 10], 'ATTACK': [46, 53, 10], 'PAIN_A': [54, 57, 7],
+    'PAIN_B': [58, 61, 7], 'PAIN_C': [62, 65, 7], 'JUMP': [66, 71, 7], 'FLIP': [72, 83, 7],
+    'SALUTE': [84, 94, 7], 'FALLBACK': [95, 111, 10], 'WAVE': [112, 122, 7], 'POINT': [123, 134, 6],
+    'CROUCH_STAND': [135, 153, 10], 'CROUCH_WALK': [154, 159, 7], 'CROUCH_ATTACK': [160, 168, 10],
+    'CROUCH_PAIN': [169, 172, 7], 'CROUCH_DEATH': [173, 177, 5], 'DEATH_FALLBACK': [178, 183, 7],
+    'DEATH_FALLFORWARD': [184, 189, 7], 'DEATH_FALLBACKSLOW': [190, 197, 7], 'BOOM': [198, 198, 5]
 }
 
 class MD2Header:
@@ -288,55 +299,20 @@ class MD2Header:
         self.offsetFrames = header[14]  # Offset para os dados dos frames
         self.offsetGLCmds = header[15]  # Offset para os dados dos comandos da OpenGL
 
-class Anim:
-    """ Classe para as animações """
-
-    # Método construtor da classse
-    def __init__(self, firstFrame, lastFrame, fps):
-        self.firstFrame = firstFrame
-        self.lastFrame = lastFrame
-        self.fps = fps
-
-# Definindo as 21 animações do modelo MD2 (nome: primeiro, último, fps)
-animations = {
-    'STAND': Anim(0, 39, 9), 'RUN': Anim(40,  45, 10), 'ATTACK': Anim(46, 53, 10), 'PAIN_A': Anim(54, 57, 7),
-    'PAIN_B': Anim(58, 61, 7), 'PAIN_C': Anim(62, 65, 7), 'JUMP': Anim(66, 71, 7), 'FLIP': Anim(72, 83, 7),
-    'SALUTE': Anim(84, 94, 7), 'FALLBACK': Anim(95, 111, 10), 'WAVE': Anim(112, 122, 7), 'POINT': Anim(123, 134, 6),
-    'CROUCH_STAND': Anim(135, 153, 10), 'CROUCH_WALK': Anim(154, 159, 7), 'CROUCH_ATTACK': Anim(160, 168, 10),
-    'CROUCH_PAIN': Anim(169, 172, 7), 'CROUCH_DEATH': Anim(173, 177, 5), 'DEATH_FALLBACK': Anim(178, 183, 7),
-    'DEATH_FALLFORWARD': Anim(184, 189, 7), 'DEATH_FALLBACKSLOW': Anim(190, 197, 7), 'BOOM': Anim(198, 198, 5)
-}
-
 class AnimState:
     """ Classe para o estado da animação """
 
     # Método construtor da classe
     def __init__(self, anim, currTime, oldTime, interpol, typeName, currFrame, nextFrame):
-        self.startFrame = anim.firstFrame
-        self.endFrame = anim.lastFrame
-        self.fps = anim.fps
+        self.startFrame = anim[0]
+        self.endFrame = anim[1]
+        self.fps = anim[2]
         self.currTime = currTime
         self.oldTime = oldTime
         self.interpol = interpol
         self.type = typeName
         self.currFrame = currFrame
         self.nextFrame = nextFrame
-
-class TexCoord:
-    """ Classe para as coordenadas de textura do modelo """
-    
-    # Método construtor da classe
-    def __init__(self, s, t):
-        self.s = s
-        self.t = t
-
-class Triangle:
-    """ Classe para os triângulos do modelo """
-
-    # Método construtor da classe
-    def __init__(self, v, texCoord):
-        self.v = v
-        self.texCoord = texCoord
 
 class Vertex:
     """ Classe para os vértices do frame """
@@ -369,11 +345,11 @@ class MD2Model:
     # Método para carregar um modelo MD2
     def loadModel(self, filename):
         # Abrindo o arquivo .md2 (arquivo binário)
-        with open(filename, 'rb') as f:            
+        with open(filename, 'rb') as f:       
             # Lendo o header do arquivo
             data = f.read(sizeof['md2_t'])
             fmt = '4s16i'
-            temp = struct.unpack(fmt, data)
+            temp = unpack(fmt, data)
             self.header = MD2Header(temp)
 
             # Verificando se o arquivo possui ident = IPD2 e versão = 8
@@ -382,33 +358,11 @@ class MD2Model:
                 f.close()
                 return False
 
-            # Lendo as skins do modelo
-            f.seek(self.header.offsetSkins)
-            data = f.read(self.header.numSkins * 64)
-            fmt = self.header.numSkins * '64s'
-            self.skins = struct.unpack(fmt, data)
-
-            # Lendo as coordenadas da textura
-            f.seek(self.header.offsetSt)
-            data = f.read(self.header.numSt * sizeof['texCoord_t'])
-            fmt = self.header.numSt * '2h'
-
-            temp = struct.unpack(fmt, data)
-            self.texCoords = [TexCoord(temp[i], temp[i+1]) for i in range(0, len(temp), 2)]
-
-            # Lendo os triângulos do modelo
-            f.seek(self.header.offsetTriangles)
-            data = f.read(self.header.numTriangles * sizeof['triangle_t'])
-            fmt = self.header.numTriangles * '6H'
-
-            temp = struct.unpack(fmt, data)
-            self.triangles = [Triangle(temp[i:i+3], temp[i+3:i+6]) for i in range(0, len(temp), 6)]
-
             # Lendo os comandos da OpenGL
             f.seek(self.header.offsetGLCmds)
             data = f.read(self.header.numGLCmds * sizeof['int'])
             fmt = self.header.numGLCmds * 'i'
-            self.glcmds = struct.unpack(fmt, data)
+            self.glcmds = unpack(fmt, data)
 
             # Criando uma lista para guardar os frames do modelo
             self.frames = []
@@ -419,7 +373,7 @@ class MD2Model:
                 # Lendo os campos scale, translate e name do frame
                 data = f.read(sizeof['frame_t'])
                 fmt = '3f3f16s'
-                temp = struct.unpack(fmt, data)
+                temp = unpack(fmt, data)
                 
                 # Salvando esses valores lidos
                 scl = temp[0:3]
@@ -429,7 +383,7 @@ class MD2Model:
                 # Lendo os vértices do frame
                 data = f.read(self.header.numVertices * sizeof['vertex_t'])
                 fmt = self.header.numVertices * '3B1B'
-                temp = struct.unpack(fmt, data)
+                temp = unpack(fmt, data)
 
                 # Construindo uma lista de vértices
                 vertices = [Vertex(temp[i:i+3], temp[i+3]) for i in range(0, len(temp), 4)]
@@ -455,26 +409,10 @@ class MD2Model:
             print('Animação {} não existe'.format(name))
             return
 
-        currFrame = animations[name].firstFrame
+        # Definindo a animação do modelo
+        currFrame = animations[name][0]
         nextFrame = currFrame + 1
         self.animation = AnimState(animations[name], 0, 0, 0, name, currFrame, nextFrame)
-
-    # Método que retorna os vértices do frame atual interpolados
-    def lerp_vertices(self):
-        v = []
-
-        curr_vertices = self.frames[self.animation.currFrame].vertices
-        next_vertices = self.frames[self.animation.nextFrame].vertices
-
-        # Interpolando os vértices
-        for i in range(self.header.numVertices):
-            x = (curr_vertices[i].v[0] + self.animation.interpol * (next_vertices[i].v[0] - curr_vertices[i].v[0])) * self.scl
-            y = (curr_vertices[i].v[1] + self.animation.interpol * (next_vertices[i].v[1] - curr_vertices[i].v[1])) * self.scl
-            z = (curr_vertices[i].v[2] + self.animation.interpol * (next_vertices[i].v[2] - curr_vertices[i].v[2])) * self.scl
-
-            v.append([x, y, z])
-
-        return v
 
     # Método para renderizar o frame do modelo
     def renderFrame(self):
@@ -487,9 +425,6 @@ class MD2Model:
         # Habilitando backface culling
         glEnable(GL_CULL_FACE)
         glCullFace(GL_BACK)
-
-        # Interpolando os vértices
-        # vertices = self.lerp_vertices()
 
         # Desenhando cada triângulo
         i = 0
@@ -538,11 +473,13 @@ class MD2Model:
                 # Desenhando o vértice
                 glVertex3fv([x, y, z])
 
+                # Decrementamos o cmd e avançamos para o próximo bloco
                 cmd -= 1
                 i += 3
 
             glEnd()
 
+        # Desabilitando o GL_CULL_FACE
         glDisable(GL_CULL_FACE)
         glPopAttrib()
 
@@ -590,11 +527,11 @@ class MD2Model:
 # Função principal
 def main():
     # Criando nosso modelo
-    OgroModel = MD2Model()
+    model = MD2Model()
 
     # Carregando o modelo
-    if not OgroModel.loadModel(sys.argv[1]):
-        print('Não foi possível carregar o arquivo', sys.argv[1])
+    if not model.loadModel(argv[1]):
+        print('Não foi possível carregar o arquivo', argv[1])
         exit(1)
 
     # Inicializando o glfw
@@ -632,13 +569,7 @@ def main():
 
     # Definindo a cor do nosso objeto
     objColorLoc = glGetUniformLocation(shader, 'objColor')
-    glUniform3f(objColorLoc, 1.0, 1.0, 1.0)
-
-    # Definindo a cor de limpeza da tela
-    glClearColor(0.2, 0.2, 0.2, 1.0)
-
-    # Habilitando o DEPTH_TEST
-    glEnable(GL_DEPTH_TEST)
+    glUniform3f(objColorLoc, 0.1, 0.8, 0.1)
 
     # Definindo o tipo de projeção
     glMatrixMode(GL_PROJECTION)
@@ -657,7 +588,7 @@ def main():
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
         # Renderizando o modelo
-        OgroModel.drawModel(time.time())
+        model.drawModel(time())
 
         # Desenhando na tela
         glfw.swap_buffers(window)
