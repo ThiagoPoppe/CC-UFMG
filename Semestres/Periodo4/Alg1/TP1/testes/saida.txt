@@ -1,0 +1,5 @@
+Grupos com alocacao
+1 1
+3 2
+Candidatos nao alocados
+2
