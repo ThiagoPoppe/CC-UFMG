@@ -44,7 +44,7 @@ float Vec3::dot(const Vec3& v, const Vec3& u) {
 // Definindo o produto vetorial entre dois vetores
 Vec3 Vec3::cross(const Vec3& v, const Vec3& u) {
     float x = v.y * u.z - v.z * u.y;
-    float y = v.x * u.z - v.z * u.x;
+    float y = v.z * u.x - v.x * u.z;
     float z = v.x * u.y - v.y * u.x;
 
     return Vec3(x, y, z);

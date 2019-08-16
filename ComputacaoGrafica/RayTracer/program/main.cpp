@@ -1,29 +1,24 @@
 #include <iostream>
 #include <fstream>
 #include <cfloat>
-#include <cmath>
-#include <vector>
 
 #include "hitable_list.h"
 #include "camera.h"
 #include "hitable.h"
-#include "sphere.h"
 #include "vec3.h"
 #include "ray.h"
-#include "lambertian.h"
-#include "metal.h"
-#include "dielectric.h"
 
 // Definindo a altura e largura da imagem de saída
-#define SCREEN_WIDTH  200
-#define SCREEN_HEIGHT 100
+#define SCREEN_WIDTH  1920
+#define SCREEN_HEIGHT 1080
 #define ANTI_ALIASING 100
 
 // Definindo função que retorna a cor do pixel
-Vec3 raytrace(const Ray& ray, const HitableList& world, int depth) {
+Vec3 raytrace(const Ray& ray, const Hitable* world, int depth) {
     struct HitRecord rec;
-
-    if (world.hit(ray, 0.001, FLT_MAX, rec)) {
+    
+    // Detectou algum objeto
+    if (world->hit(ray, 0.001, FLT_MAX, rec)) {
         Ray scattered;
         Vec3 attenuation;
 
@@ -33,6 +28,7 @@ Vec3 raytrace(const Ray& ray, const HitableList& world, int depth) {
             return Vec3(0, 0, 0);
     }
 
+    // Colorindo o background
     Vec3 dir = Vec3::normalize(ray.get_dir());
     float t = 0.5 * (dir.get_y() + 1);
     return (1 - t) * Vec3(1, 1, 1) + t * Vec3(0.5, 0.7, 1.0);
@@ -49,18 +45,16 @@ int main(int argc, const char **argv) {
     f << 255 << "\n";
 
     // Definindo nossa camera
-    Camera cam;
+    Vec3 cam_origin(13, 2, 3);
+    Vec3 look_at(0, 0, 0);
+    Vec3 vup(0, 1, 0);
+    float focus_dist = 10.0;
+    float aperture = 0.0;
 
-    // Definindo os objetos
-    std::vector<Hitable*> objects;
-    objects.push_back(new Sphere(Vec3(0, 0, -1), 0.5, new Lambertian(Vec3(0.1, 0.2, 0.5))));
-    objects.push_back(new Sphere(Vec3(0, -100.5, -1), 100, new Lambertian(Vec3(0.8, 0.8, 0.0))));
-    objects.push_back(new Sphere(Vec3(1, 0, -1), 0.5, new Metal(Vec3(0.8, 0.6, 0.2), 0.2)));
-    objects.push_back(new Sphere(Vec3(-1, 0, -1), 0.5, new Dielectric(1.5)));
-    objects.push_back(new Sphere(Vec3(-1, 0, -1), -0.45, new Dielectric(1.5)));
+    Camera cam(cam_origin, look_at, vup, 20, (float) SCREEN_WIDTH / SCREEN_HEIGHT, aperture, focus_dist);
 
-    // Criando nossa lista de objetos hitable
-    HitableList world(objects);
+    // Criando nossa cena
+    Hitable* world = HitableList::random_scene();
 
     // Inserindo a cor de cada pixel no arquivo de saída
     for (int j = SCREEN_HEIGHT - 1; j >= 0; j--) {
@@ -80,4 +74,5 @@ int main(int argc, const char **argv) {
     }
 
     f.close();
+    delete world;
 }

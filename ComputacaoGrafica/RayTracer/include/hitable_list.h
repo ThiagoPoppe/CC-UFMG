@@ -14,6 +14,9 @@ class HitableList : public Hitable {
         HitableList(std::vector<Hitable*> l);
         ~HitableList();
 
+        // Métodos da classe
+        static Hitable* random_scene();
+
         // Definindo métodos da herança
         virtual bool hit(const Ray& ray, float t_min, float t_max, struct HitRecord& rec) const;
 };
