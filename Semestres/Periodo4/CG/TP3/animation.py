@@ -445,8 +445,8 @@ class MD2Model:
             # Enquanto o comdando for > 0 iremos fazer o seguinte passo
             while cmd > 0:
                 # Obtendo coordenadas de textura e o índice do vértice a ser exibido
-                s = self.glcmds[i]
-                t = self.glcmds[i+1]
+                # s = self.glcmds[i]
+                # t = self.glcmds[i+1]
                 idx = self.glcmds[i+2]
 
                 # Obtendo os vértices dos frames atual e próximo
@@ -552,6 +552,9 @@ def main():
     # Tornando a janela criada o contexto atual
     glfw.make_context_current(window)
 
+    # Exibindo a versão da OpenGL
+    print(glGetString(GL_VERSION))
+
     # Compilando e usando o shader
     shader = gl_shaders.compileProgram(gl_shaders.compileShader(vertex_shader_phong, GL_VERTEX_SHADER),
                                        gl_shaders.compileShader(fragment_shader_phong, GL_FRAGMENT_SHADER))
@@ -581,6 +584,7 @@ def main():
 
     # MAIN LOOP
     while not glfw.window_should_close(window):
+
         # Capturando eventos
         glfw.poll_events()
 
